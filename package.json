@@ -13,9 +13,11 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@neondatabase/auth": "^0.4.2-beta",
+    "@neondatabase/auth-ui": "^0.2.1-beta",
     "@neondatabase/serverless": "^0.10.4",
     "drizzle-orm": "^0.45.2",
-    "next": "^15.1.6",
+    "next": "^16.2.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
