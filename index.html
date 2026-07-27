@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestão das Obras — Gestão de projetos técnicos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #eef6f7; color: #0e3438;
+    font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  #root { min-height: 100vh; }
+  a { color: #0e3438; text-decoration: none; }
+  a:hover { color: #0099A5; }
+  input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; }
+  ::placeholder { color: #86adb1; }
+  @keyframes dcSlideIn { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes dcFade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Hover states (the design expresses these via style-hover; here as CSS classes). */
+  .nav-item:hover { background: rgba(255,255,255,0.08) !important; }
+  .row-item:hover { background: #e9f5f6 !important; }
+  .btn-primary:hover { background: #007f8a !important; }
+  .btn-soft:hover { background: #e7f3f4 !important; }
+  .card-item:hover { border-color: #0099A5 !important; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Vendored locally so the app runs fully offline (no CDN). -->
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<!-- Compiled from src/app.jsx (see README to rebuild). -->
+<script src="app.js"></script>
+</body>
+</html>

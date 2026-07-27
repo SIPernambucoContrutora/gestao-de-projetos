@@ -1,0 +1,19 @@
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+.vercel
+
+# Env (nunca commitar segredos: DATABASE_URL, NEON_AUTH_COOKIE_SECRET, ...)
+.env
+.env.local
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
