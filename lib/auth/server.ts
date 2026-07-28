@@ -1,3 +1,4 @@
+import "@/lib/server-only-guard";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
 
 // Instância de servidor do Neon Auth (Managed Better Auth).

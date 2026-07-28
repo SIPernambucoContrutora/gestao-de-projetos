@@ -2,9 +2,10 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, getTxDb } from "@/db";
+import { db } from "@/db";
 import {
   disciplinas,
+  empreendimentos,
   etapas,
   historicoAlteracoes,
   itensProjeto,
@@ -60,6 +61,10 @@ export type ItemComRefs = ItemProjeto & {
   etapaNome: string;
 };
 
+export type ItemDashboard = ItemComRefs & {
+  empreendimentoNome: string;
+};
+
 /* ------------------------------------------------------------------ *
  * Leitura
  * ------------------------------------------------------------------ */
@@ -94,37 +99,89 @@ export async function listItensPorEmpreendimento(
   return rows.map((r) => ({ ...r.item, disciplinaNome: r.disciplinaNome, etapaNome: r.etapaNome }));
 }
 
+/** Todos os itens (todos os empreendimentos), para o dashboard consolidado. */
+export async function listTodosItens(): Promise<ItemDashboard[]> {
+  await requireUser();
+
+  const rows = await db
+    .select({
+      item: itensProjeto,
+      disciplinaNome: disciplinas.nome,
+      etapaNome: etapas.nome,
+      empreendimentoNome: empreendimentos.nome,
+    })
+    .from(itensProjeto)
+    .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
+    .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
+    .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
+    .orderBy(empreendimentos.nome, itensProjeto.item);
+
+  return rows.map((r) => ({
+    ...r.item,
+    disciplinaNome: r.disciplinaNome,
+    etapaNome: r.etapaNome,
+    empreendimentoNome: r.empreendimentoNome,
+  }));
+}
+
 /* ------------------------------------------------------------------ *
  * Escrita
  * ------------------------------------------------------------------ */
 
 export async function createItem(input: ItemInput): Promise<ItemProjeto> {
-  await requireEscrita();
+  const { user } = await requireEscrita();
 
   if (!input.empreendimentoId) throw new Error("empreendimentoId é obrigatório.");
   if (!input.disciplinaId) throw new Error("disciplinaId é obrigatório.");
   if (!input.etapaId) throw new Error("etapaId é obrigatório.");
 
-  const [row] = await db
-    .insert(itensProjeto)
-    .values({
+  // Contexto para desnormalizar no histórico (sobrevive à exclusão).
+  const [emp] = await db
+    .select({ nome: empreendimentos.nome })
+    .from(empreendimentos)
+    .where(eq(empreendimentos.id, input.empreendimentoId))
+    .limit(1);
+  const [disc] = await db
+    .select({ nome: disciplinas.nome })
+    .from(disciplinas)
+    .where(eq(disciplinas.id, input.disciplinaId))
+    .limit(1);
+
+  // id explícito para referenciar o novo item no log dentro do mesmo batch.
+  const novoId = crypto.randomUUID();
+
+  const [inseridos] = await db.batch([
+    db
+      .insert(itensProjeto)
+      .values({
+        id: novoId,
+        empreendimentoId: input.empreendimentoId,
+        item: input.item ?? null,
+        disciplinaId: input.disciplinaId,
+        etapaId: input.etapaId,
+        planta: input.planta ?? null,
+        status: input.status ?? "pendente",
+        dataInicio: input.dataInicio ?? null,
+        prazoPrevisto: input.prazoPrevisto ?? null,
+        prazoReprogramado: input.prazoReprogramado ?? null,
+        prazoRealizado: input.prazoRealizado ?? null,
+        metaDias: input.metaDias ?? null,
+        observacoes: input.observacoes ?? null,
+      })
+      .returning(),
+    db.insert(historicoAlteracoes).values({
+      itemId: novoId,
       empreendimentoId: input.empreendimentoId,
-      item: input.item ?? null,
-      disciplinaId: input.disciplinaId,
-      etapaId: input.etapaId,
-      planta: input.planta ?? null,
-      status: input.status ?? "pendente",
-      dataInicio: input.dataInicio ?? null,
-      prazoPrevisto: input.prazoPrevisto ?? null,
-      prazoReprogramado: input.prazoReprogramado ?? null,
-      prazoRealizado: input.prazoRealizado ?? null,
-      metaDias: input.metaDias ?? null,
-      observacoes: input.observacoes ?? null,
-    })
-    .returning();
+      usuarioId: user.id,
+      acao: "criacao",
+      empreendimentoNome: emp?.nome ?? null,
+      itemNumero: input.item ?? null,
+      disciplinaNome: disc?.nome ?? null,
+    }),
+  ]);
 
   revalidatePath(`/empreendimentos/${input.empreendimentoId}`);
-  return row;
+  return inseridos[0];
 }
 
 /** Normaliza um valor de campo para comparação/armazenamento como texto. */
@@ -144,74 +201,112 @@ export async function updateItem(
 ): Promise<ItemProjeto> {
   const { user } = await requireEscrita();
 
-  const { database, pool } = getTxDb();
-  try {
-    return await database.transaction(async (tx) => {
-      const [atual] = await tx
-        .select()
-        .from(itensProjeto)
-        .where(eq(itensProjeto.id, id))
-        .limit(1);
+  const [atual] = await db
+    .select({
+      item: itensProjeto,
+      empNome: empreendimentos.nome,
+      discNome: disciplinas.nome,
+    })
+    .from(itensProjeto)
+    .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
+    .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
+    .where(eq(itensProjeto.id, id))
+    .limit(1);
 
-      if (!atual) throw new Error("Item não encontrado.");
+  if (!atual) throw new Error("Item não encontrado.");
+  const item = atual.item;
 
-      const updateValues: Record<string, unknown> = {};
-      const diffs: {
-        campo: string;
-        valorAntigo: string | null;
-        valorNovo: string | null;
-      }[] = [];
+  const updateValues: Record<string, unknown> = {};
+  const diffs: {
+    campo: string;
+    valorAntigo: string | null;
+    valorNovo: string | null;
+  }[] = [];
 
-      for (const key of Object.keys(patch) as CampoEditavel[]) {
-        if (!(key in CAMPOS_EDITAVEIS)) continue; // ignora chaves não editáveis
-        const novo = patch[key] as unknown;
-        const antigo = (atual as Record<string, unknown>)[key];
+  for (const key of Object.keys(patch) as CampoEditavel[]) {
+    if (!(key in CAMPOS_EDITAVEIS)) continue; // ignora chaves não editáveis
+    const novo = patch[key] as unknown;
+    const antigo = (item as Record<string, unknown>)[key];
 
-        if (toText(antigo) === toText(novo)) continue; // sem mudança
+    if (toText(antigo) === toText(novo)) continue; // sem mudança
 
-        updateValues[key] = novo ?? null;
-        diffs.push({
-          campo: CAMPOS_EDITAVEIS[key],
-          valorAntigo: toText(antigo),
-          valorNovo: toText(novo),
-        });
-      }
-
-      if (diffs.length === 0) return atual; // nada mudou, nada a registrar
-
-      const [row] = await tx
-        .update(itensProjeto)
-        .set(updateValues)
-        .where(eq(itensProjeto.id, id))
-        .returning();
-
-      await tx.insert(historicoAlteracoes).values(
-        diffs.map((d) => ({
-          itemId: id,
-          usuarioId: user.id,
-          campo: d.campo,
-          valorAntigo: d.valorAntigo,
-          valorNovo: d.valorNovo,
-        })),
-      );
-
-      revalidatePath(`/empreendimentos/${row.empreendimentoId}`);
-      return row;
+    updateValues[key] = novo ?? null;
+    diffs.push({
+      campo: CAMPOS_EDITAVEIS[key],
+      valorAntigo: toText(antigo),
+      valorNovo: toText(novo),
     });
-  } finally {
-    await pool.end();
   }
+
+  if (diffs.length === 0) return item; // nada mudou, nada a registrar
+
+  // Atômico em UM round-trip HTTP: db.batch roda tudo em uma transação, sem
+  // depender do Pool/WebSocket (mais robusto em serverless). O UPDATE e as N
+  // linhas de histórico entram juntos, ou nada entra.
+  const [atualizados] = await db.batch([
+    db.update(itensProjeto).set(updateValues).where(eq(itensProjeto.id, id)).returning(),
+    db.insert(historicoAlteracoes).values(
+      diffs.map((d) => ({
+        itemId: id,
+        empreendimentoId: item.empreendimentoId,
+        acao: "edicao" as const,
+        usuarioId: user.id,
+        campo: d.campo,
+        valorAntigo: d.valorAntigo,
+        valorNovo: d.valorNovo,
+        empreendimentoNome: atual.empNome,
+        itemNumero: item.item,
+        disciplinaNome: atual.discNome,
+      })),
+    ),
+  ]);
+
+  const row = atualizados[0];
+  revalidatePath(`/empreendimentos/${row.empreendimentoId}`);
+  return row;
 }
 
 export async function deleteItem(id: string): Promise<{ id: string }> {
-  await requireEscrita();
+  const { user } = await requireEscrita();
 
-  const [row] = await db
-    .delete(itensProjeto)
+  // Captura contexto para descrever a exclusão (o item deixará de existir).
+  const [alvo] = await db
+    .select({
+      empreendimentoId: itensProjeto.empreendimentoId,
+      empreendimentoNome: empreendimentos.nome,
+      item: itensProjeto.item,
+      planta: itensProjeto.planta,
+      disciplinaNome: disciplinas.nome,
+    })
+    .from(itensProjeto)
+    .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
+    .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
     .where(eq(itensProjeto.id, id))
-    .returning({ id: itensProjeto.id, empreendimentoId: itensProjeto.empreendimentoId });
+    .limit(1);
 
-  if (!row) throw new Error("Item não encontrado.");
-  revalidatePath(`/empreendimentos/${row.empreendimentoId}`);
-  return { id: row.id };
+  if (!alvo) throw new Error("Item não encontrado.");
+
+  const numero = alvo.item != null ? String(alvo.item).padStart(2, "0") : "s/nº";
+  const descricao = `Item ${numero} — ${alvo.disciplinaNome}${alvo.planta ? ` — ${alvo.planta}` : ""}`;
+
+  // Exclui o item e registra a exclusão no empreendimento pai. Com a FK em
+  // SET NULL, o item_id do log fica nulo, mas o registro (e o contexto
+  // denormalizado) sobrevive. Atômico via batch.
+  await db.batch([
+    db.delete(itensProjeto).where(eq(itensProjeto.id, id)),
+    db.insert(historicoAlteracoes).values({
+      itemId: null,
+      empreendimentoId: alvo.empreendimentoId,
+      acao: "exclusao",
+      usuarioId: user.id,
+      campo: "item",
+      valorAntigo: descricao,
+      empreendimentoNome: alvo.empreendimentoNome,
+      itemNumero: alvo.item,
+      disciplinaNome: alvo.disciplinaNome,
+    }),
+  ]);
+
+  revalidatePath(`/empreendimentos/${alvo.empreendimentoId}`);
+  return { id };
 }

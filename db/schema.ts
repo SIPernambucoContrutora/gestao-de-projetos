@@ -31,6 +31,13 @@ export const papelUsuarioEnum = pgEnum("papel_usuario", [
   "leitura",
 ]);
 
+// Tipo de evento registrado na auditoria.
+export const acaoHistoricoEnum = pgEnum("acao_historico", [
+  "criacao",
+  "edicao",
+  "exclusao",
+]);
+
 /* ------------------------------------------------------------------ *
  * empreendimentos
  * ------------------------------------------------------------------ */
@@ -112,20 +119,34 @@ export const historicoAlteracoes = pgTable(
   "historico_alteracoes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    itemId: uuid("item_id")
-      .notNull()
-      .references(() => itensProjeto.id, { onDelete: "cascade" }),
-    // FK adicionada na FASE 3 (após provisionar o Neon Auth).
+    // Auditoria DURÁVEL: FKs em SET NULL para o log sobreviver à exclusão da
+    // entidade (o contexto fica preservado nas colunas *_nome/*_numero abaixo).
+    itemId: uuid("item_id").references(() => itensProjeto.id, {
+      onDelete: "set null",
+    }),
+    empreendimentoId: uuid("empreendimento_id").references(
+      () => empreendimentos.id,
+      { onDelete: "set null" },
+    ),
+    acao: acaoHistoricoEnum("acao").notNull().default("edicao"),
+    // usuario_id = id do usuário do Neon Auth (text, sem FK física).
     usuarioId: text("usuario_id").notNull(),
-    campo: text("campo").notNull(),
+    // campo/valores só se aplicam a 'edicao'; nulos em criação/exclusão.
+    campo: text("campo"),
     valorAntigo: text("valor_antigo"),
     valorNovo: text("valor_novo"),
+    // Contexto denormalizado, gravado no momento do evento — permanece legível
+    // mesmo depois que o item/empreendimento é excluído.
+    empreendimentoNome: text("empreendimento_nome"),
+    itemNumero: integer("item_numero"),
+    disciplinaNome: text("disciplina_nome"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (t) => [
     index("historico_alteracoes_item_id_idx").on(t.itemId),
+    index("historico_alteracoes_empreendimento_id_idx").on(t.empreendimentoId),
     index("historico_alteracoes_usuario_id_idx").on(t.usuarioId),
   ],
 );
@@ -204,3 +225,4 @@ export type HistoricoAlteracao = typeof historicoAlteracoes.$inferSelect;
 export type UsuarioPapel = typeof usuariosPapel.$inferSelect;
 export type StatusItem = (typeof statusItemEnum.enumValues)[number];
 export type PapelUsuario = (typeof papelUsuarioEnum.enumValues)[number];
+export type AcaoHistorico = (typeof acaoHistoricoEnum.enumValues)[number];
