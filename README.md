@@ -200,10 +200,13 @@ npm run dev        # http://localhost:3000
 
 ### 5. Primeiro usuário e admin
 
-1. Crie sua conta em `/auth/sign-in` **ou** pelo console da Neon. Não há tela de
-   cadastro no app — por decisão de produto, novos usuários são criados pelo admin.
-2. Promova-se a admin (a primeira vez é via SQL, pois quem não tem papel é
-   `leitura`):
+**Bootstrap do primeiro admin** (só a primeira vez; depois é tudo pela UI):
+
+1. Crie o **primeiro usuário** com senha via `createUsuario` (a tela de Usuários
+   exige um admin, então para o 1º use uma chamada direta ao endpoint de sign-up
+   do Neon Auth, ou o console). Novos usuários criados por quem não é admin não
+   têm como — por isso este passo é manual uma única vez.
+2. Promova-o a admin (quem não tem papel é `leitura`):
 
 ```sql
 insert into usuarios_papel (usuario_id, papel)
@@ -211,7 +214,8 @@ select id::text, 'admin' from neon_auth.user where email = 'seu-email@dominio.co
 on conflict (usuario_id) do update set papel = 'admin', updated_at = now();
 ```
 
-Depois disso, a gestão de papéis é feita pela tela **Usuários** (sem SQL).
+**Depois disso, todo usuário novo é criado pela tela `/usuarios`** (botão "Novo
+usuário": nome, e-mail, senha e papel) — o cadastro público fica bloqueado.
 
 ---
 
@@ -302,8 +306,9 @@ Todas em `lib/actions/*`, todas com checagem de auth:
   de excluir.
 - **Histórico** (`/historico`) — timeline de auditoria: quem alterou qual campo,
   de→para, quando (fuso America/Recife) e o contexto (empreendimento/item/disciplina).
-- **Usuários** (`/usuarios`, admin) — lista usuários e altera papéis inline.
-- **Login** (`/auth/*`) — tela fiel ao protótipo; **sem cadastro** (feito pelo admin).
+- **Usuários** (`/usuarios`, admin) — lista usuários, **cria novos usuários com
+  senha** e altera papéis inline.
+- **Login** (`/auth/*`) — tela fiel ao protótipo; **sem cadastro público**.
 
 ---
 

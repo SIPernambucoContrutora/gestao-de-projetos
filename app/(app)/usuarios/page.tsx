@@ -2,6 +2,7 @@ import { getCurrentUserWithRole } from "@/lib/auth/session";
 import { listUsuarios } from "@/lib/actions/usuarios";
 import type { UsuarioListado } from "@/lib/actions/usuarios";
 import { UsuariosTable } from "../_components/UsuariosTable";
+import { NovoUsuarioButton } from "../_components/NovoUsuarioButton";
 
 export const metadata = { title: "Usuários — Gestão das Obras" };
 
@@ -43,7 +44,7 @@ export default async function UsuariosPage() {
 
   return (
     <div>
-      <Header />
+      <Header acao={<NovoUsuarioButton />} />
       <section style={{ padding: "20px 28px 48px", maxWidth: "900px" }}>
         {erro ? (
           <div className="usuarios-erro">{erro}</div>
@@ -59,11 +60,18 @@ export default async function UsuariosPage() {
   );
 }
 
-function Header() {
+function Header({ acao }: { acao?: React.ReactNode }) {
   return (
     <header className="page-head">
-      <h1 className="page-head__title">Usuários</h1>
-      <p className="page-head__sub">Somente administradores podem convidar ou alterar papéis</p>
+      <div className="page-head__row">
+        <div>
+          <h1 className="page-head__title">Usuários</h1>
+          <p className="page-head__sub">
+            Somente administradores podem criar usuários ou alterar papéis
+          </p>
+        </div>
+        {acao}
+      </div>
     </header>
   );
 }
