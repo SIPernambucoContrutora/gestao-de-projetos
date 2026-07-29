@@ -12,15 +12,13 @@ export function NovoEmpreendimentoButton() {
   const [form, setForm] = useState({
     nome: "",
     responsavel: "",
-    revisaoAtual: "R00",
-    dataRevisao: "",
   });
 
   function fechar() {
     if (salvando) return;
     setAberto(false);
     setErro(null);
-    setForm({ nome: "", responsavel: "", revisaoAtual: "R00", dataRevisao: "" });
+    setForm({ nome: "", responsavel: "" });
   }
 
   async function salvar() {
@@ -34,8 +32,6 @@ export function NovoEmpreendimentoButton() {
       await createEmpreendimento({
         nome: form.nome,
         responsavel: form.responsavel || null,
-        revisaoAtual: form.revisaoAtual || "R00",
-        dataRevisao: form.dataRevisao || null,
       });
       router.refresh();
       setSalvando(false);
@@ -86,16 +82,6 @@ export function NovoEmpreendimentoButton() {
                   placeholder="Ex.: Marina Duarte"
                 />
               </label>
-              <div className="form-grid" style={{ marginTop: "12px" }}>
-                <label className="field">
-                  <span className="field__label">Revisão atual</span>
-                  <input className="input mono" value={form.revisaoAtual} onChange={set("revisaoAtual")} />
-                </label>
-                <label className="field">
-                  <span className="field__label">Data da revisão</span>
-                  <input type="date" className="input mono" value={form.dataRevisao} onChange={set("dataRevisao")} />
-                </label>
-              </div>
             </div>
 
             <div className="modal-foot">

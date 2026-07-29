@@ -5,11 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
 
-type NavKey = "dashboard" | "empreendimentos" | "historico" | "usuarios";
+type NavKey = "dashboard" | "empreendimentos" | "projetistas" | "historico" | "usuarios";
 
 const NAV: { href: string; label: string; icon: NavKey; match: string }[] = [
   { href: "/", label: "Dashboard", icon: "dashboard", match: "/" },
   { href: "/empreendimentos", label: "Empreendimentos", icon: "empreendimentos", match: "/empreendimentos" },
+  { href: "/projetistas", label: "Projetistas", icon: "projetistas", match: "/projetistas" },
   { href: "/historico", label: "Histórico", icon: "historico", match: "/historico" },
   { href: "/usuarios", label: "Usuários", icon: "usuarios", match: "/usuarios" },
 ];
@@ -44,6 +45,13 @@ function NavIcon({ name }: { name: NavKey }) {
       <svg {...common}>
         <circle cx="8" cy="8" r="6.2" />
         <polyline points="8,4.4 8,8 10.6,9.6" />
+      </svg>
+    );
+  if (name === "projetistas")
+    return (
+      <svg {...common}>
+        <path d="M2.5 13.5 11 5l1.5 1.5L4 15H2.5v-1.5Z" />
+        <path d="M9.5 6.5 11.5 3.5 13.5 4.5 11.5 8" />
       </svg>
     );
   return (

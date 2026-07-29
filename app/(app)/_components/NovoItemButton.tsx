@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Disciplina, Etapa, StatusItem } from "@/db/schema";
+import type { Disciplina, Etapa, Projetista, StatusItem } from "@/db/schema";
 import { createItem } from "@/lib/actions/itens";
 import { ROTULO_STATUS } from "@/lib/ui/status";
 
 const VAZIO = {
-  item: "",
   disciplinaId: "",
   etapaId: "",
+  projetistaId: "",
   planta: "",
   status: "pendente" as StatusItem,
   dataInicio: "",
@@ -18,16 +18,20 @@ const VAZIO = {
   prazoRealizado: "",
   metaDias: "",
   observacoes: "",
+  revisaoAtual: "R00",
+  dataRevisao: "",
 };
 
 export function NovoItemButton({
   empreendimentoId,
   disciplinas,
   etapas,
+  projetistas,
 }: {
   empreendimentoId: string;
   disciplinas: Disciplina[];
   etapas: Etapa[];
+  projetistas: Projetista[];
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -50,9 +54,9 @@ export function NovoItemButton({
     try {
       await createItem({
         empreendimentoId,
-        item: form.item.trim() ? Number(form.item) : null,
         disciplinaId: form.disciplinaId,
         etapaId: form.etapaId,
+        projetistaId: form.projetistaId || null,
         planta: form.planta || null,
         status: form.status,
         dataInicio: form.dataInicio || null,
@@ -61,6 +65,8 @@ export function NovoItemButton({
         prazoRealizado: form.prazoRealizado || null,
         metaDias: form.metaDias || null,
         observacoes: form.observacoes || null,
+        revisaoAtual: form.revisaoAtual || "R00",
+        dataRevisao: form.dataRevisao || null,
       });
       router.refresh();
       setSalvando(false);
@@ -118,8 +124,15 @@ export function NovoItemButton({
                   </select>
                 </label>
                 <label className="field">
-                  <span className="field__label">Nº do item</span>
-                  <input className="input mono" value={form.item} onChange={set("item")} inputMode="numeric" placeholder="ex.: 1" />
+                  <span className="field__label">Projetista</span>
+                  <select className="input" value={form.projetistaId} onChange={set("projetistaId")}>
+                    <option value="">Sem projetista</option>
+                    {projetistas.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="field">
                   <span className="field__label">Status</span>
@@ -158,6 +171,14 @@ export function NovoItemButton({
                 <label className="field">
                   <span className="field__label">Meta</span>
                   <input className="input mono" value={form.metaDias} onChange={set("metaDias")} placeholder="ex.: D+30" />
+                </label>
+                <label className="field">
+                  <span className="field__label">Revisão atual</span>
+                  <input className="input mono" value={form.revisaoAtual} onChange={set("revisaoAtual")} />
+                </label>
+                <label className="field">
+                  <span className="field__label">Data da revisão</span>
+                  <input type="date" className="input mono" value={form.dataRevisao} onChange={set("dataRevisao")} />
                 </label>
               </div>
 

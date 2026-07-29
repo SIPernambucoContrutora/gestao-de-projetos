@@ -16,8 +16,6 @@ function toText(v: unknown): string | null {
 export type EmpreendimentoInput = {
   nome: string;
   responsavel?: string | null;
-  revisaoAtual?: string;
-  dataRevisao?: string | null; // 'YYYY-MM-DD'
 };
 
 export type EmpreendimentoComProgresso = Empreendimento & {
@@ -40,8 +38,6 @@ export async function listEmpreendimentos(): Promise<EmpreendimentoComProgresso[
       id: empreendimentos.id,
       nome: empreendimentos.nome,
       responsavel: empreendimentos.responsavel,
-      revisaoAtual: empreendimentos.revisaoAtual,
-      dataRevisao: empreendimentos.dataRevisao,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -84,8 +80,6 @@ export async function getEmpreendimento(
       id: empreendimentos.id,
       nome: empreendimentos.nome,
       responsavel: empreendimentos.responsavel,
-      revisaoAtual: empreendimentos.revisaoAtual,
-      dataRevisao: empreendimentos.dataRevisao,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -130,8 +124,6 @@ export async function createEmpreendimento(input: EmpreendimentoInput): Promise<
         id: novoId,
         nome,
         responsavel: input.responsavel ?? null,
-        revisaoAtual: input.revisaoAtual?.trim() || "R00",
-        dataRevisao: input.dataRevisao ?? null,
       })
       .returning(),
     db.insert(historicoAlteracoes).values({
@@ -151,8 +143,6 @@ export async function createEmpreendimento(input: EmpreendimentoInput): Promise<
 const CAMPOS_EMP = {
   nome: "nome",
   responsavel: "responsavel",
-  revisaoAtual: "revisao_atual",
-  dataRevisao: "data_revisao",
 } as const;
 type CampoEmp = keyof typeof CAMPOS_EMP;
 
@@ -170,8 +160,6 @@ export async function updateEmpreendimento(
     novos.nome = nome;
   }
   if (patch.responsavel !== undefined) novos.responsavel = patch.responsavel ?? null;
-  if (patch.revisaoAtual !== undefined) novos.revisaoAtual = patch.revisaoAtual?.trim() || "R00";
-  if (patch.dataRevisao !== undefined) novos.dataRevisao = patch.dataRevisao ?? null;
 
   if (Object.keys(novos).length === 0) throw new Error("Nada para atualizar.");
 

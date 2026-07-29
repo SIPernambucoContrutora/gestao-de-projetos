@@ -88,8 +88,13 @@ export type StatusDerivado = {
   tom: Tom;
   rotulo: string;
   atrasado: boolean;
-  desvio: string; // "+3d" | "-2d" | "no prazo" | "—"
+  desvio: string; // "atraso de 3 dias" | "Finalizado em atraso de 3 dias" | "Finalizado no Prazo" | "-2d" | "—"
+  desvioAtraso: boolean; // true quando o texto do desvio representa atraso (estiliza em vermelho)
 };
+
+function textoAtraso(dias: number, prefixo = ""): string {
+  return `${prefixo}atraso de ${dias} ${dias === 1 ? "dia" : "dias"}`;
+}
 
 /**
  * Deriva tom/rótulo/desvio de um item. `hoje` é injetável para manter
@@ -112,13 +117,24 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
   }
 
   let desvio = "—";
+  let desvioAtraso = false;
   if (real && alvo) {
     const d = diffDias(real, alvo);
-    desvio = d === 0 ? "no prazo" : d > 0 ? `+${d}d` : `${d}d`;
+    if (d > 0) {
+      desvio = textoAtraso(d, "Finalizado em ");
+      desvioAtraso = true;
+    } else {
+      desvio = "Finalizado no Prazo";
+    }
   } else if (alvo && it.status !== "finalizado") {
     const d = diffDias(hoje, alvo);
-    desvio = d > 0 ? `+${d}d` : `${d}d`;
+    if (d > 0) {
+      desvio = textoAtraso(d);
+      desvioAtraso = true;
+    } else {
+      desvio = `${d}d`;
+    }
   }
 
-  return { tom, rotulo, atrasado: tom === "vermelho", desvio };
+  return { tom, rotulo, atrasado: tom === "vermelho", desvio, desvioAtraso };
 }

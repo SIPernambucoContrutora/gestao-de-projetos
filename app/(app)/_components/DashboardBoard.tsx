@@ -153,6 +153,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                 <th>Empreendimento</th>
                 <th>Disciplina</th>
                 <th>Etapa</th>
+                <th>Projetista</th>
                 <th>Status</th>
                 <th>Previsto</th>
                 <th>Reprog.</th>
@@ -163,12 +164,12 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
+                  <td colSpan={10} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
                 </tr>
               ) : (
                 filtrados.map((it) => {
                   const d = derivarStatus(it, hoje);
-                  const desvioNeg = d.desvio.startsWith("+") && it.status !== "finalizado";
+                  const desvioNeg = d.desvioAtraso;
                   return (
                     <tr
                       key={it.id}
@@ -179,6 +180,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                       <td className="td-muted">{it.empreendimentoNome}</td>
                       <td className="td-strong">{it.disciplinaNome}</td>
                       <td>{it.etapaNome}</td>
+                      <td className="td-muted">{it.projetistaNome ?? "—"}</td>
                       <td><StatusBadge tom={d.tom} rotulo={d.rotulo} /></td>
                       <td className="mono td-muted">{formatBR(it.prazoPrevisto)}</td>
                       <td className="mono td-muted">{formatBR(it.prazoReprogramado)}</td>

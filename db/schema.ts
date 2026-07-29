@@ -46,8 +46,6 @@ export const empreendimentos = pgTable("empreendimentos", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull(),
   responsavel: text("responsavel"),
-  revisaoAtual: text("revisao_atual").notNull().default("R00"),
-  dataRevisao: date("data_revisao"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -72,6 +70,20 @@ export const etapas = pgTable("etapas", {
 });
 
 /* ------------------------------------------------------------------ *
+ * projetistas  (cadastro simples, sem login — vinculado a itens 1:N)
+ * ------------------------------------------------------------------ */
+
+export const projetistas = pgTable("projetistas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  telefone: text("telefone"),
+  email: text("email"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/* ------------------------------------------------------------------ *
  * itens_projeto
  * ------------------------------------------------------------------ */
 
@@ -89,6 +101,9 @@ export const itensProjeto = pgTable(
     etapaId: uuid("etapa_id")
       .notNull()
       .references(() => etapas.id, { onDelete: "restrict" }),
+    projetistaId: uuid("projetista_id").references(() => projetistas.id, {
+      onDelete: "set null",
+    }),
     planta: text("planta"),
     status: statusItemEnum("status").notNull().default("pendente"),
     dataInicio: date("data_inicio"),
@@ -98,11 +113,14 @@ export const itensProjeto = pgTable(
     // Guardada como no design: "D+30", "D+45", ... (texto livre).
     metaDias: text("meta_dias"),
     observacoes: text("observacoes"),
+    revisaoAtual: text("revisao_atual").notNull().default("R00"),
+    dataRevisao: date("data_revisao"),
   },
   (t) => [
     index("itens_projeto_empreendimento_id_idx").on(t.empreendimentoId),
     index("itens_projeto_disciplina_id_idx").on(t.disciplinaId),
     index("itens_projeto_etapa_id_idx").on(t.etapaId),
+    index("itens_projeto_projetista_id_idx").on(t.projetistaId),
     index("itens_projeto_status_idx").on(t.status),
   ],
 );
@@ -188,6 +206,10 @@ export const etapasRelations = relations(etapas, ({ many }) => ({
   itens: many(itensProjeto),
 }));
 
+export const projetistasRelations = relations(projetistas, ({ many }) => ({
+  itens: many(itensProjeto),
+}));
+
 export const itensProjetoRelations = relations(itensProjeto, ({ one, many }) => ({
   empreendimento: one(empreendimentos, {
     fields: [itensProjeto.empreendimentoId],
@@ -200,6 +222,10 @@ export const itensProjetoRelations = relations(itensProjeto, ({ one, many }) => 
   etapa: one(etapas, {
     fields: [itensProjeto.etapaId],
     references: [etapas.id],
+  }),
+  projetista: one(projetistas, {
+    fields: [itensProjeto.projetistaId],
+    references: [projetistas.id],
   }),
   historico: many(historicoAlteracoes),
 }));
@@ -219,6 +245,8 @@ export type Empreendimento = typeof empreendimentos.$inferSelect;
 export type NovoEmpreendimento = typeof empreendimentos.$inferInsert;
 export type Disciplina = typeof disciplinas.$inferSelect;
 export type Etapa = typeof etapas.$inferSelect;
+export type Projetista = typeof projetistas.$inferSelect;
+export type NovoProjetista = typeof projetistas.$inferInsert;
 export type ItemProjeto = typeof itensProjeto.$inferSelect;
 export type NovoItemProjeto = typeof itensProjeto.$inferInsert;
 export type HistoricoAlteracao = typeof historicoAlteracoes.$inferSelect;

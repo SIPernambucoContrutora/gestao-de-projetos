@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Disciplina, Etapa, HistoricoAlteracao, StatusItem } from "@/db/schema";
+import type { Disciplina, Etapa, HistoricoAlteracao, Projetista, StatusItem } from "@/db/schema";
 import type { ItemComRefs } from "@/lib/actions/itens";
 import { deleteItem, updateItem } from "@/lib/actions/itens";
 import { listHistoricoPorItem } from "@/lib/actions/historico";
@@ -25,6 +25,7 @@ export function ItensBoard({
   itens,
   disciplinas,
   etapas,
+  projetistas,
   podeEditar,
   hojeISO,
 }: {
@@ -32,6 +33,7 @@ export function ItensBoard({
   itens: ItemComRefs[];
   disciplinas: Disciplina[];
   etapas: Etapa[];
+  projetistas: Projetista[];
   podeEditar: boolean;
   hojeISO: string;
 }) {
@@ -126,6 +128,7 @@ export function ItensBoard({
             empreendimentoId={empreendimentoId}
             disciplinas={disciplinas}
             etapas={etapas}
+            projetistas={projetistas}
           />
         )}
       </div>
@@ -137,6 +140,7 @@ export function ItensBoard({
               <th style={{ width: "44px" }}>#</th>
               <th>Disciplina</th>
               <th>Etapa</th>
+              <th>Projetista</th>
               <th>Planta / escopo</th>
               <th>Status</th>
               <th>Início</th>
@@ -150,14 +154,14 @@ export function ItensBoard({
           <tbody>
             {filtrados.length === 0 ? (
               <tr>
-                <td colSpan={11} className="data-table__empty">
+                <td colSpan={12} className="data-table__empty">
                   Nenhum item corresponde aos filtros.
                 </td>
               </tr>
             ) : (
               filtrados.map((it) => {
                 const d = derivarStatus(it, hoje);
-                const desvioNeg = d.desvio.startsWith("+") && it.status !== "finalizado";
+                const desvioNeg = d.desvioAtraso;
                 return (
                   <tr
                     key={it.id}
@@ -169,6 +173,7 @@ export function ItensBoard({
                     </td>
                     <td className="td-strong">{it.disciplinaNome}</td>
                     <td>{it.etapaNome}</td>
+                    <td className="td-muted">{it.projetistaNome ?? "—"}</td>
                     <td className="td-wide">{it.planta ?? "—"}</td>
                     <td>
                       <StatusBadge tom={d.tom} rotulo={d.rotulo} />
@@ -194,6 +199,7 @@ export function ItensBoard({
           key={aberto.id}
           item={aberto}
           etapas={etapas}
+          projetistas={projetistas}
           podeEditar={podeEditar}
           hoje={hoje}
           onClose={() => setAberto(null)}
@@ -210,34 +216,42 @@ export function ItensBoard({
 type Draft = {
   status: StatusItem;
   etapaId: string;
+  projetistaId: string;
   dataInicio: string;
   prazoPrevisto: string;
   prazoReprogramado: string;
   prazoRealizado: string;
   observacoes: string;
+  revisaoAtual: string;
+  dataRevisao: string;
 };
 
 function toDraft(it: ItemComRefs): Draft {
   return {
     status: it.status,
     etapaId: it.etapaId,
+    projetistaId: it.projetistaId ?? "",
     dataInicio: it.dataInicio ?? "",
     prazoPrevisto: it.prazoPrevisto ?? "",
     prazoReprogramado: it.prazoReprogramado ?? "",
     prazoRealizado: it.prazoRealizado ?? "",
     observacoes: it.observacoes ?? "",
+    revisaoAtual: it.revisaoAtual ?? "R00",
+    dataRevisao: it.dataRevisao ?? "",
   };
 }
 
 function ItemDrawer({
   item,
   etapas,
+  projetistas,
   podeEditar,
   hoje,
   onClose,
 }: {
   item: ItemComRefs;
   etapas: Etapa[];
+  projetistas: Projetista[];
   podeEditar: boolean;
   hoje: Date;
   onClose: () => void;
@@ -296,11 +310,14 @@ function ItemDrawer({
       await updateItem(item.id, {
         status: draft.status,
         etapaId: draft.etapaId,
+        projetistaId: draft.projetistaId || null,
         dataInicio: draft.dataInicio || null,
         prazoPrevisto: draft.prazoPrevisto || null,
         prazoReprogramado: draft.prazoReprogramado || null,
         prazoRealizado: draft.prazoRealizado || null,
         observacoes: draft.observacoes || null,
+        revisaoAtual: draft.revisaoAtual || "R00",
+        dataRevisao: draft.dataRevisao || null,
       });
       router.refresh();
       onClose();
@@ -368,10 +385,38 @@ function ItemDrawer({
               </select>
             </label>
 
+            <label className="field">
+              <span className="field__label">Projetista</span>
+              <select
+                className="input"
+                value={draft.projetistaId}
+                onChange={set("projetistaId")}
+                disabled={!podeEditar}
+              >
+                <option value="">Sem projetista</option>
+                {projetistas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <DateField label="Data de início" value={draft.dataInicio} onChange={set("dataInicio")} disabled={!podeEditar} />
             <DateField label="Prazo previsto" value={draft.prazoPrevisto} onChange={set("prazoPrevisto")} disabled={!podeEditar} />
             <DateField label="Prazo reprogramado" value={draft.prazoReprogramado} onChange={set("prazoReprogramado")} disabled={!podeEditar} />
             <DateField label="Prazo realizado" value={draft.prazoRealizado} onChange={set("prazoRealizado")} disabled={!podeEditar} />
+
+            <label className="field">
+              <span className="field__label">Revisão atual</span>
+              <input
+                className="input mono"
+                value={draft.revisaoAtual}
+                onChange={set("revisaoAtual")}
+                disabled={!podeEditar}
+              />
+            </label>
+            <DateField label="Data da revisão" value={draft.dataRevisao} onChange={set("dataRevisao")} disabled={!podeEditar} />
           </div>
 
           <label className="field" style={{ marginTop: "14px" }}>

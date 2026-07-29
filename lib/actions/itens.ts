@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
@@ -9,6 +9,7 @@ import {
   etapas,
   historicoAlteracoes,
   itensProjeto,
+  projetistas,
 } from "@/db/schema";
 import type { ItemProjeto, StatusItem } from "@/db/schema";
 import { requireEscrita, requireUser } from "@/lib/auth/session";
@@ -19,9 +20,9 @@ import { requireEscrita, requireUser } from "@/lib/auth/session";
 
 export type ItemInput = {
   empreendimentoId: string;
-  item?: number | null;
   disciplinaId: string;
   etapaId: string;
+  projetistaId?: string | null;
   planta?: string | null;
   status?: StatusItem;
   dataInicio?: string | null; // 'YYYY-MM-DD'
@@ -30,14 +31,17 @@ export type ItemInput = {
   prazoRealizado?: string | null;
   metaDias?: string | null; // "D+30"
   observacoes?: string | null;
+  revisaoAtual?: string | null; // "R00"
+  dataRevisao?: string | null;
 };
 
-// Campos editáveis por updateItem (id e empreendimentoId não mudam por aqui).
-// A ordem/label é usada tanto para o UPDATE quanto para o histórico.
+// Campos editáveis por updateItem (id, empreendimentoId e item — numeração
+// automática — não mudam por aqui). A ordem/label é usada tanto para o
+// UPDATE quanto para o histórico.
 const CAMPOS_EDITAVEIS = {
-  item: "item",
   disciplinaId: "disciplina",
   etapaId: "etapa",
+  projetistaId: "projetista",
   planta: "planta",
   status: "status",
   dataInicio: "data_inicio",
@@ -46,9 +50,19 @@ const CAMPOS_EDITAVEIS = {
   prazoRealizado: "prazo_realizado",
   metaDias: "meta_dias",
   observacoes: "observacoes",
+  revisaoAtual: "revisao_atual",
+  dataRevisao: "data_revisao",
 } as const;
 
 type CampoEditavel = keyof typeof CAMPOS_EDITAVEIS;
+
+// Campos cujo valor é um id de outra entidade — no histórico, gravamos o
+// NOME da entidade referenciada, não o uuid cru.
+const CAMPOS_REFERENCIA = {
+  disciplinaId: disciplinas,
+  etapaId: etapas,
+  projetistaId: projetistas,
+} as const;
 
 export type ItemFiltros = {
   disciplinaId?: string;
@@ -59,18 +73,23 @@ export type ItemFiltros = {
 export type ItemComRefs = ItemProjeto & {
   disciplinaNome: string;
   etapaNome: string;
+  projetistaNome: string | null;
 };
 
 export type ItemDashboard = ItemComRefs & {
   empreendimentoNome: string;
 };
 
+// Ordena pela data-alvo mais próxima da data atual: reprogramado tem
+// precedência sobre previsto; itens sem nenhuma data ficam por último.
+const ORDEM_DATA_ALVO = sql`coalesce(${itensProjeto.prazoReprogramado}, ${itensProjeto.prazoPrevisto}) asc nulls last`;
+
 /* ------------------------------------------------------------------ *
  * Leitura
  * ------------------------------------------------------------------ */
 
 /**
- * Lista itens de um empreendimento, com nomes de disciplina/etapa,
+ * Lista itens de um empreendimento, com nomes de disciplina/etapa/projetista,
  * e filtros opcionais por disciplina, etapa e status.
  */
 export async function listItensPorEmpreendimento(
@@ -89,14 +108,21 @@ export async function listItensPorEmpreendimento(
       item: itensProjeto,
       disciplinaNome: disciplinas.nome,
       etapaNome: etapas.nome,
+      projetistaNome: projetistas.nome,
     })
     .from(itensProjeto)
     .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
     .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
+    .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
     .where(and(...conds))
-    .orderBy(itensProjeto.item);
+    .orderBy(ORDEM_DATA_ALVO);
 
-  return rows.map((r) => ({ ...r.item, disciplinaNome: r.disciplinaNome, etapaNome: r.etapaNome }));
+  return rows.map((r) => ({
+    ...r.item,
+    disciplinaNome: r.disciplinaNome,
+    etapaNome: r.etapaNome,
+    projetistaNome: r.projetistaNome,
+  }));
 }
 
 /** Todos os itens (todos os empreendimentos), para o dashboard consolidado. */
@@ -108,18 +134,21 @@ export async function listTodosItens(): Promise<ItemDashboard[]> {
       item: itensProjeto,
       disciplinaNome: disciplinas.nome,
       etapaNome: etapas.nome,
+      projetistaNome: projetistas.nome,
       empreendimentoNome: empreendimentos.nome,
     })
     .from(itensProjeto)
     .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
     .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
+    .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
     .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
-    .orderBy(empreendimentos.nome, itensProjeto.item);
+    .orderBy(ORDEM_DATA_ALVO);
 
   return rows.map((r) => ({
     ...r.item,
     disciplinaNome: r.disciplinaNome,
     etapaNome: r.etapaNome,
+    projetistaNome: r.projetistaNome,
     empreendimentoNome: r.empreendimentoNome,
   }));
 }
@@ -147,6 +176,14 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
     .where(eq(disciplinas.id, input.disciplinaId))
     .limit(1);
 
+  // Nº do item: incremental e automático por empreendimento (MAX + 1).
+  // Sem renumeração ao excluir — exclusões podem deixar buracos na sequência.
+  const [{ max }] = await db
+    .select({ max: sql<number | null>`max(${itensProjeto.item})` })
+    .from(itensProjeto)
+    .where(eq(itensProjeto.empreendimentoId, input.empreendimentoId));
+  const proximoItem = (max ?? 0) + 1;
+
   // id explícito para referenciar o novo item no log dentro do mesmo batch.
   const novoId = crypto.randomUUID();
 
@@ -156,9 +193,10 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
       .values({
         id: novoId,
         empreendimentoId: input.empreendimentoId,
-        item: input.item ?? null,
+        item: proximoItem,
         disciplinaId: input.disciplinaId,
         etapaId: input.etapaId,
+        projetistaId: input.projetistaId ?? null,
         planta: input.planta ?? null,
         status: input.status ?? "pendente",
         dataInicio: input.dataInicio ?? null,
@@ -167,6 +205,8 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
         prazoRealizado: input.prazoRealizado ?? null,
         metaDias: input.metaDias ?? null,
         observacoes: input.observacoes ?? null,
+        revisaoAtual: input.revisaoAtual?.trim() || "R00",
+        dataRevisao: input.dataRevisao ?? null,
       })
       .returning(),
     db.insert(historicoAlteracoes).values({
@@ -175,7 +215,7 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
       usuarioId: user.id,
       acao: "criacao",
       empreendimentoNome: emp?.nome ?? null,
-      itemNumero: input.item ?? null,
+      itemNumero: proximoItem,
       disciplinaNome: disc?.nome ?? null,
     }),
   ]);
@@ -206,15 +246,26 @@ export async function updateItem(
       item: itensProjeto,
       empNome: empreendimentos.nome,
       discNome: disciplinas.nome,
+      etapaNome: etapas.nome,
+      projetistaNome: projetistas.nome,
     })
     .from(itensProjeto)
     .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
     .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
+    .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
+    .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
     .where(eq(itensProjeto.id, id))
     .limit(1);
 
   if (!atual) throw new Error("Item não encontrado.");
   const item = atual.item;
+
+  // Nomes atuais das entidades referenciadas (para o "antigo" do diff).
+  const nomeAtualPorCampo: Partial<Record<CampoEditavel, string | null>> = {
+    disciplinaId: atual.discNome,
+    etapaId: atual.etapaNome,
+    projetistaId: atual.projetistaNome,
+  };
 
   const updateValues: Record<string, unknown> = {};
   const diffs: {
@@ -231,6 +282,28 @@ export async function updateItem(
     if (toText(antigo) === toText(novo)) continue; // sem mudança
 
     updateValues[key] = novo ?? null;
+
+    // Para campos-referência (disciplina/etapa/projetista), o histórico
+    // grava o NOME, não o uuid — resolve o nome do novo valor sob demanda.
+    if (key in CAMPOS_REFERENCIA) {
+      let valorNovoLegivel: string | null = null;
+      if (novo) {
+        const tabela = CAMPOS_REFERENCIA[key as keyof typeof CAMPOS_REFERENCIA];
+        const [ref] = await db
+          .select({ nome: tabela.nome })
+          .from(tabela)
+          .where(eq(tabela.id, novo as string))
+          .limit(1);
+        valorNovoLegivel = ref?.nome ?? null;
+      }
+      diffs.push({
+        campo: CAMPOS_EDITAVEIS[key],
+        valorAntigo: nomeAtualPorCampo[key] ?? null,
+        valorNovo: valorNovoLegivel,
+      });
+      continue;
+    }
+
     diffs.push({
       campo: CAMPOS_EDITAVEIS[key],
       valorAntigo: toText(antigo),

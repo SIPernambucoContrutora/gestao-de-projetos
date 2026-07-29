@@ -4,10 +4,10 @@ import { getEmpreendimento } from "@/lib/actions/empreendimentos";
 import { listItensPorEmpreendimento } from "@/lib/actions/itens";
 import type { ItemComRefs } from "@/lib/actions/itens";
 import { listDisciplinas, listEtapas } from "@/lib/actions/listas";
-import type { Disciplina, Etapa } from "@/db/schema";
+import { listProjetistas } from "@/lib/actions/projetistas";
+import type { Disciplina, Etapa, Projetista } from "@/db/schema";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
-import { formatBR } from "@/lib/ui/status";
 import { ItensBoard } from "../../_components/ItensBoard";
 import { ExcluirEmpreendimentoButton } from "../../_components/ExcluirEmpreendimentoButton";
 
@@ -24,21 +24,24 @@ export default async function EmpreendimentoDetalhePage({
   let itens: ItemComRefs[] = [];
   let disciplinas: Disciplina[] = [];
   let etapas: Etapa[] = [];
+  let projetistas: Projetista[] = [];
   let podeEditar = false;
   let authNeeded = false;
 
   try {
-    const [e, its, discs, etps, ctx] = await Promise.all([
+    const [e, its, discs, etps, projs, ctx] = await Promise.all([
       getEmpreendimento(id),
       listItensPorEmpreendimento(id),
       listDisciplinas(),
       listEtapas(),
+      listProjetistas(),
       getCurrentUserWithRole(),
     ]);
     emp = e;
     itens = its;
     disciplinas = discs;
     etapas = etps;
+    projetistas = projs;
     podeEditar = ctx?.papel === "admin" || ctx?.papel === "equipe";
   } catch (err) {
     if (err instanceof AuthError) authNeeded = true;
@@ -77,8 +80,6 @@ export default async function EmpreendimentoDetalhePage({
             <h1 className="page-head__title">{emp.nome}</h1>
             <div className="detail-head__meta">
               <Campo rotulo="Responsável" valor={emp.responsavel ?? "—"} />
-              <Campo rotulo="Revisão atual" valor={emp.revisaoAtual} mono />
-              <Campo rotulo="Data da revisão" valor={formatBR(emp.dataRevisao)} mono />
               <Campo rotulo="Itens" valor={String(emp.totalItens)} mono />
             </div>
           </div>
@@ -108,6 +109,7 @@ export default async function EmpreendimentoDetalhePage({
         itens={itens}
         disciplinas={disciplinas}
         etapas={etapas}
+        projetistas={projetistas}
         podeEditar={podeEditar}
         hojeISO={hojeISO}
       />

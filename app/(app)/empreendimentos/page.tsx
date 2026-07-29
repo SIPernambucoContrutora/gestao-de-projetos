@@ -2,7 +2,6 @@ import Link from "next/link";
 import { listEmpreendimentos } from "@/lib/actions/empreendimentos";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
-import { formatBR } from "@/lib/ui/status";
 import { NovoEmpreendimentoButton } from "../_components/NovoEmpreendimentoButton";
 
 export const metadata = { title: "Empreendimentos — Gestão das Obras" };
@@ -60,11 +59,8 @@ function EmpreendimentoCard({ emp }: { emp: EmpreendimentoComProgresso }) {
     <Link href={`/empreendimentos/${emp.id}`} className="card-item">
       <div className="card-item__top">
         <div className="card-item__name">{emp.nome}</div>
-        <span className="card-item__rev">{emp.revisaoAtual}</span>
       </div>
-      <div className="card-item__meta">
-        {emp.responsavel ?? "Sem responsável"} · revisão {formatBR(emp.dataRevisao)}
-      </div>
+      <div className="card-item__meta">{emp.responsavel ?? "Sem responsável"}</div>
 
       <div className="card-item__progress-row">
         <span>
