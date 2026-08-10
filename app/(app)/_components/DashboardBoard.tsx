@@ -146,13 +146,14 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
         </div>
 
         <div className="table-wrap">
-          <table className="data-table" style={{ minWidth: "1040px" }}>
+          <table className="data-table" style={{ minWidth: "1220px" }}>
             <thead>
               <tr>
                 <th style={{ width: "44px" }}>#</th>
                 <th>Empreendimento</th>
                 <th>Disciplina</th>
                 <th>Etapa</th>
+                <th>Planta / escopo</th>
                 <th>Projetista</th>
                 <th>Status</th>
                 <th>Previsto</th>
@@ -164,7 +165,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
+                  <td colSpan={11} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
                 </tr>
               ) : (
                 filtrados.map((it) => {
@@ -180,6 +181,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                       <td className="td-muted">{it.empreendimentoNome}</td>
                       <td className="td-strong">{it.disciplinaNome}</td>
                       <td>{it.etapaNome}</td>
+                      <td className="td-wide">{it.planta ?? "—"}</td>
                       <td className="td-muted">{it.projetistaNome ?? "—"}</td>
                       <td><StatusBadge tom={d.tom} rotulo={d.rotulo} /></td>
                       <td className="mono td-muted">{formatBR(it.prazoPrevisto)}</td>
