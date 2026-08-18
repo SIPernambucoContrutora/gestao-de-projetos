@@ -9,3 +9,9 @@ export function StatusBadge({ tom, rotulo }: { tom: Tom; rotulo: string }) {
     </span>
   );
 }
+
+/** Campo de desvio preenchido. O tom já vem derivado por `derivarStatus`. */
+export function DesvioBadge({ tom, texto }: { tom: Tom; texto: string }) {
+  if (texto === "—") return <span className="td-muted">—</span>;
+  return <span className={`desvio desvio--${tom}`}>{texto}</span>;
+}

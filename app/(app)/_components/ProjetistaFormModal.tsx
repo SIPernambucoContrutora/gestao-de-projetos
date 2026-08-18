@@ -2,44 +2,27 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Projetista } from "@/db/schema";
-import { createProjetista, updateProjetista } from "@/lib/actions/projetistas";
+import { createProjetista } from "@/lib/actions/projetistas";
 
 type Form = { nome: string; telefone: string; email: string };
 
-function toForm(p?: Projetista | null): Form {
-  return { nome: p?.nome ?? "", telefone: p?.telefone ?? "", email: p?.email ?? "" };
-}
-
-export function ProjetistaFormModal({
-  projetista,
-  onClose,
-}: {
-  projetista?: Projetista | null;
-  onClose: () => void;
-}) {
+/** Cadastro de projetista. A edição acontece no drawer da tabela. */
+export function ProjetistaFormModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
-  const [form, setForm] = useState<Form>(() => toForm(projetista));
+  const [form, setForm] = useState<Form>({ nome: "", telefone: "", email: "" });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-
-  const editando = !!projetista;
 
   async function salvar() {
     if (!form.nome.trim()) return setErro("Informe o nome do projetista.");
     setSalvando(true);
     setErro(null);
     try {
-      const payload = {
+      await createProjetista({
         nome: form.nome,
         telefone: form.telefone || null,
         email: form.email || null,
-      };
-      if (editando) {
-        await updateProjetista(projetista!.id, payload);
-      } else {
-        await createProjetista(payload);
-      }
+      });
       router.refresh();
       setSalvando(false);
       onClose();
@@ -57,7 +40,7 @@ export function ProjetistaFormModal({
       <div className="modal-overlay" onClick={() => !salvando && onClose()} />
       <div className="modal" role="dialog" aria-modal="true">
         <div className="modal-head">
-          <h2 className="modal-title">{editando ? "Editar projetista" : "Novo projetista"}</h2>
+          <h2 className="modal-title">Novo projetista</h2>
           <button type="button" className="drawer-close" onClick={onClose} aria-label="Fechar">
             ×
           </button>
@@ -86,7 +69,7 @@ export function ProjetistaFormModal({
             Cancelar
           </button>
           <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>
-            {salvando ? "Salvando…" : editando ? "Salvar" : "Criar"}
+            {salvando ? "Salvando…" : "Criar"}
           </button>
         </div>
       </div>

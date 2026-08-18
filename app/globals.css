@@ -678,6 +678,33 @@ textarea.input {
 .ta-right {
   text-align: right;
 }
+
+/* Campo de desvio: preenchido, com o tom derivado de (prazos + reprogramação). */
+.desvio {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.desvio--verde {
+  color: #155f3f;
+  background: #e8f3ec;
+}
+.desvio--vermelho {
+  color: #93281f;
+  background: #fbe8e5;
+}
+.desvio--ambar {
+  color: #875206;
+  background: #fbf0da;
+}
+.desvio--cinza {
+  color: #436469;
+  background: #e4eff0;
+}
 .data-table__empty {
   padding: 28px 12px;
   text-align: center;

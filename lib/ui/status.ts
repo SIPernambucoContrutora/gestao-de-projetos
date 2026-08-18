@@ -88,12 +88,17 @@ export type StatusDerivado = {
   tom: Tom;
   rotulo: string;
   atrasado: boolean;
-  desvio: string; // "atraso de 3 dias" | "Finalizado em atraso de 3 dias" | "Finalizado no Prazo" | "-2d" | "—"
-  desvioAtraso: boolean; // true quando o texto do desvio representa atraso (estiliza em vermelho)
+  desvio: string; // "Finalizado no prazo" | "3 dias para o vencimento do prazo" | "Atraso de 3 dias" | "—"
+  desvioTom: Tom; // tom do campo de desvio (verde/vermelho/cinza)
 };
 
 function textoAtraso(dias: number, prefixo = ""): string {
   return `${prefixo}atraso de ${dias} ${dias === 1 ? "dia" : "dias"}`;
+}
+
+function textoAVencer(dias: number): string {
+  if (dias === 0) return "Vence hoje";
+  return `${dias} ${dias === 1 ? "dia" : "dias"} para o vencimento do prazo`;
 }
 
 /**
@@ -116,25 +121,41 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
     tom = "ambar";
   }
 
+  // Desvio: texto explícito + tom próprio.
+  // O finalizado é medido contra o prazo PREVISTO (o original), não contra o
+  // reprogramado — entregar na data reprogramada continua sendo atraso.
+  //  · finalizado até o previsto  → verde  ("Finalizado no prazo")
+  //  · finalizado após o previsto → vermelho ("Finalizado com atraso de N dias")
+  //  · em aberto, alvo no futuro  → cinza  ("N dias para o vencimento do prazo"),
+  //    mas VERMELHO se houve reprogramação — o prazo original já estourou.
+  //  · em aberto, previsto vencido e AINDA sem reprogramação
+  //                               → vermelho ("Necessário reprogramar")
+  //  · em aberto, reprogramado também vencido
+  //                               → vermelho ("Atraso de N dias")
+  const reprogramado = !!parseISO(it.prazoReprogramado);
   let desvio = "—";
-  let desvioAtraso = false;
-  if (real && alvo) {
-    const d = diffDias(real, alvo);
+  let desvioTom: Tom = "cinza";
+  // Base do desvio de entrega: o previsto original (cai no alvo se não houver).
+  const baseEntrega = parseISO(it.prazoPrevisto) ?? alvo;
+  if (real && baseEntrega) {
+    const d = diffDias(real, baseEntrega);
     if (d > 0) {
-      desvio = textoAtraso(d, "Finalizado em ");
-      desvioAtraso = true;
+      desvio = textoAtraso(d, "Finalizado com ");
+      desvioTom = "vermelho";
     } else {
-      desvio = "Finalizado no Prazo";
+      desvio = "Finalizado no prazo";
+      desvioTom = "verde";
     }
   } else if (alvo && it.status !== "finalizado") {
     const d = diffDias(hoje, alvo);
     if (d > 0) {
-      desvio = textoAtraso(d);
-      desvioAtraso = true;
+      desvio = reprogramado ? `Atraso de ${d} ${d === 1 ? "dia" : "dias"}` : "Necessário reprogramar";
+      desvioTom = "vermelho";
     } else {
-      desvio = `${d}d`;
+      desvio = textoAVencer(-d);
+      desvioTom = reprogramado ? "vermelho" : "cinza";
     }
   }
 
-  return { tom, rotulo, atrasado: tom === "vermelho", desvio, desvioAtraso };
+  return { tom, rotulo, atrasado: tom === "vermelho", desvio, desvioTom };
 }

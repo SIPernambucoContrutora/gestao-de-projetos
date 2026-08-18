@@ -44,7 +44,11 @@ export default async function ProjetistasPage() {
         </div>
       ) : (
         <section style={{ padding: "0 28px 48px" }}>
-          <ProjetistasTable projetistas={projetistas} podeEditar={podeEditar} />
+          <ProjetistasTable
+            projetistas={projetistas}
+            podeEditar={podeEditar}
+            hojeISO={new Date().toISOString().slice(0, 10)}
+          />
         </section>
       )}
     </div>

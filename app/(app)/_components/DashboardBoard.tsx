@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ItemDashboard } from "@/lib/actions/itens";
 import type { StatusItem } from "@/db/schema";
 import { derivarStatus, formatBR, parseISO } from "@/lib/ui/status";
-import { StatusBadge } from "./StatusBadge";
+import { DesvioBadge, StatusBadge } from "./StatusBadge";
 
 type ChipKey = "all" | StatusItem | "atrasado";
 
@@ -146,7 +146,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
         </div>
 
         <div className="table-wrap">
-          <table className="data-table" style={{ minWidth: "1220px" }}>
+          <table className="data-table" style={{ minWidth: "1400px" }}>
             <thead>
               <tr>
                 <th style={{ width: "44px" }}>#</th>
@@ -156,6 +156,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                 <th>Planta / escopo</th>
                 <th>Projetista</th>
                 <th>Status</th>
+                <th>Data início</th>
                 <th>Previsto</th>
                 <th>Reprog.</th>
                 <th>Realizado</th>
@@ -165,12 +166,11 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
+                  <td colSpan={12} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
                 </tr>
               ) : (
                 filtrados.map((it) => {
                   const d = derivarStatus(it, hoje);
-                  const desvioNeg = d.desvioAtraso;
                   return (
                     <tr
                       key={it.id}
@@ -184,10 +184,11 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                       <td className="td-wide">{it.planta ?? "—"}</td>
                       <td className="td-muted">{it.projetistaNome ?? "—"}</td>
                       <td><StatusBadge tom={d.tom} rotulo={d.rotulo} /></td>
+                      <td className="mono td-muted">{formatBR(it.dataInicio)}</td>
                       <td className="mono td-muted">{formatBR(it.prazoPrevisto)}</td>
                       <td className="mono td-muted">{formatBR(it.prazoReprogramado)}</td>
                       <td className="mono td-muted">{formatBR(it.prazoRealizado)}</td>
-                      <td className={`mono ta-right${desvioNeg ? " td-danger" : " td-muted"}`}>{d.desvio}</td>
+                      <td className="ta-right"><DesvioBadge tom={d.desvioTom} texto={d.desvio} /></td>
                     </tr>
                   );
                 })

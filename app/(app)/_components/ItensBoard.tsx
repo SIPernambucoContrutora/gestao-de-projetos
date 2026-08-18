@@ -7,7 +7,7 @@ import type { ItemComRefs } from "@/lib/actions/itens";
 import { deleteItem, updateItem } from "@/lib/actions/itens";
 import { listHistoricoPorItem } from "@/lib/actions/historico";
 import { derivarStatus, formatBR, parseISO, rotuloCampo, ROTULO_STATUS } from "@/lib/ui/status";
-import { StatusBadge } from "./StatusBadge";
+import { DesvioBadge, StatusBadge } from "./StatusBadge";
 import { NovoItemButton } from "./NovoItemButton";
 
 type ChipKey = "all" | StatusItem | "atrasado";
@@ -134,7 +134,7 @@ export function ItensBoard({
       </div>
 
       <div className="table-wrap">
-        <table className="data-table" style={{ minWidth: "1180px" }}>
+        <table className="data-table" style={{ minWidth: "1360px" }}>
           <thead>
             <tr>
               <th style={{ width: "44px" }}>#</th>
@@ -161,7 +161,6 @@ export function ItensBoard({
             ) : (
               filtrados.map((it) => {
                 const d = derivarStatus(it, hoje);
-                const desvioNeg = d.desvioAtraso;
                 return (
                   <tr
                     key={it.id}
@@ -183,8 +182,8 @@ export function ItensBoard({
                     <td className="mono td-muted">{formatBR(it.prazoReprogramado)}</td>
                     <td className="mono td-muted">{formatBR(it.prazoRealizado)}</td>
                     <td className="mono td-muted">{it.metaDias ?? "—"}</td>
-                    <td className={`mono ta-right${desvioNeg ? " td-danger" : " td-muted"}`}>
-                      {d.desvio}
+                    <td className="ta-right">
+                      <DesvioBadge tom={d.desvioTom} texto={d.desvio} />
                     </td>
                   </tr>
                 );
@@ -438,7 +437,9 @@ function ItemDrawer({
             </div>
             <div>
               <div className="field__label">Desvio</div>
-              <div className={`mono${derivado.atrasado ? " td-danger" : ""}`}>{derivado.desvio}</div>
+              <div style={{ marginTop: "3px" }}>
+                <DesvioBadge tom={derivado.desvioTom} texto={derivado.desvio} />
+              </div>
             </div>
             <div>
               <div className="field__label">Situação</div>
