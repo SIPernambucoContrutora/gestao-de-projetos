@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Disciplina, Etapa, Projetista, StatusItem } from "@/db/schema";
 import { createItem } from "@/lib/actions/itens";
+import type { UsuarioBasico } from "@/lib/actions/usuarios";
 import { ROTULO_STATUS } from "@/lib/ui/status";
 
 const VAZIO = {
@@ -12,6 +13,7 @@ const VAZIO = {
   projetistaId: "",
   planta: "",
   status: "pendente" as StatusItem,
+  usuarioAnaliseId: "",
   dataInicio: "",
   prazoPrevisto: "",
   prazoReprogramado: "",
@@ -27,11 +29,13 @@ export function NovoItemButton({
   disciplinas,
   etapas,
   projetistas,
+  usuarios,
 }: {
   empreendimentoId: string;
   disciplinas: Disciplina[];
   etapas: Etapa[];
   projetistas: Projetista[];
+  usuarios: UsuarioBasico[];
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -46,9 +50,14 @@ export function NovoItemButton({
     setForm({ ...VAZIO });
   }
 
+  const emAnalise = form.status === "em_analise";
+
   async function salvar() {
     if (!form.disciplinaId) return setErro("Selecione a disciplina.");
     if (!form.etapaId) return setErro("Selecione a etapa.");
+    if (emAnalise && !form.usuarioAnaliseId) {
+      return setErro("Selecione o usuário da análise para salvar o status Em análise.");
+    }
     setSalvando(true);
     setErro(null);
     try {
@@ -59,6 +68,7 @@ export function NovoItemButton({
         projetistaId: form.projetistaId || null,
         planta: form.planta || null,
         status: form.status,
+        usuarioAnaliseId: emAnalise ? form.usuarioAnaliseId : null,
         dataInicio: form.dataInicio || null,
         prazoPrevisto: form.prazoPrevisto || null,
         prazoReprogramado: form.prazoReprogramado || null,
@@ -144,6 +154,19 @@ export function NovoItemButton({
                     ))}
                   </select>
                 </label>
+                {emAnalise && (
+                  <label className="field">
+                    <span className="field__label">Usuário da análise *</span>
+                    <select className="input" value={form.usuarioAnaliseId} onChange={set("usuarioAnaliseId")}>
+                      <option value="">Selecione…</option>
+                      {usuarios.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </div>
 
               <label className="field" style={{ marginTop: "12px" }}>

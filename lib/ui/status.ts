@@ -11,8 +11,36 @@ export type Tom = "verde" | "ambar" | "vermelho" | "cinza";
 export const ROTULO_STATUS: Record<StatusItem, string> = {
   pendente: "Pendente",
   em_andamento: "Em andamento",
+  em_analise: "Em análise",
   finalizado: "Finalizado",
 };
+
+/**
+ * Prioridade de exibição por status (menor = mais acima nas listagens).
+ * Pendente primeiro (é o que precisa ser programado com urgência) e
+ * finalizado por último. Espelha o CASE do ORDER BY em lib/actions/itens.
+ */
+export const ORDEM_STATUS: Record<StatusItem, number> = {
+  pendente: 0,
+  em_andamento: 1,
+  em_analise: 2,
+  finalizado: 3,
+};
+
+/**
+ * Nome curto de um usuário do Neon Auth para exibição ("Em análise por X").
+ * Cai no trecho antes do @ do e-mail quando não há nome cadastrado.
+ */
+export function rotuloUsuario(
+  name: string | null | undefined,
+  email?: string | null,
+): string {
+  const n = name?.trim();
+  if (n) return n;
+  const e = email?.trim();
+  if (e) return e.split("@")[0];
+  return "usuário";
+}
 
 // Rótulos legíveis dos campos gravados no histórico (itens e empreendimentos).
 export const ROTULO_CAMPO_HISTORICO: Record<string, string> = {
@@ -25,6 +53,7 @@ export const ROTULO_CAMPO_HISTORICO: Record<string, string> = {
   prazo_previsto: "prazo previsto",
   prazo_reprogramado: "prazo reprogramado",
   prazo_realizado: "prazo realizado",
+  usuario_analise: "usuário da análise",
   meta_dias: "meta",
   observacoes: "observações",
   nome: "nome",
@@ -82,6 +111,8 @@ export type ItemDatas = {
   prazoPrevisto?: string | null;
   prazoReprogramado?: string | null;
   prazoRealizado?: string | null;
+  // Nome de quem conduz a análise — usado no rótulo "Em análise por X".
+  usuarioAnaliseNome?: string | null;
 };
 
 export type StatusDerivado = {
@@ -117,15 +148,21 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
   } else if (alvo && alvo < hoje) {
     tom = "vermelho";
     rotulo = "Atrasado";
-  } else if (it.status === "em_andamento") {
+  } else if (it.status === "em_andamento" || it.status === "em_analise") {
     tom = "ambar";
+  }
+
+  // Em análise identifica QUEM analisa — a informação é mais útil que o
+  // rótulo genérico, então prevalece sobre "Atrasado" (o tom vermelho fica).
+  if (it.status === "em_analise" && it.usuarioAnaliseNome) {
+    rotulo = `Em análise por ${it.usuarioAnaliseNome}`;
   }
 
   // Desvio: texto explícito + tom próprio.
   // O finalizado é medido contra o prazo PREVISTO (o original), não contra o
   // reprogramado — entregar na data reprogramada continua sendo atraso.
   //  · finalizado até o previsto  → verde  ("Finalizado no prazo")
-  //  · finalizado após o previsto → vermelho ("Finalizado com atraso de N dias")
+  //  · finalizado após o previsto → âmbar  ("Finalizado com atraso de N dias")
   //  · em aberto, alvo no futuro  → cinza  ("N dias para o vencimento do prazo"),
   //    mas VERMELHO se houve reprogramação — o prazo original já estourou.
   //  · em aberto, previsto vencido e AINDA sem reprogramação
@@ -140,8 +177,9 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
   if (real && baseEntrega) {
     const d = diffDias(real, baseEntrega);
     if (d > 0) {
+      // Âmbar, não vermelho: já foi entregue — é atenção, não pendência.
       desvio = textoAtraso(d, "Finalizado com ");
-      desvioTom = "vermelho";
+      desvioTom = "ambar";
     } else {
       desvio = "Finalizado no prazo";
       desvioTom = "verde";

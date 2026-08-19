@@ -5,6 +5,8 @@ import { listItensPorEmpreendimento } from "@/lib/actions/itens";
 import type { ItemComRefs } from "@/lib/actions/itens";
 import { listDisciplinas, listEtapas } from "@/lib/actions/listas";
 import { listProjetistas } from "@/lib/actions/projetistas";
+import { listUsuariosBasico } from "@/lib/actions/usuarios";
+import type { UsuarioBasico } from "@/lib/actions/usuarios";
 import type { Disciplina, Etapa, Projetista } from "@/db/schema";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
@@ -25,16 +27,18 @@ export default async function EmpreendimentoDetalhePage({
   let disciplinas: Disciplina[] = [];
   let etapas: Etapa[] = [];
   let projetistas: Projetista[] = [];
+  let usuarios: UsuarioBasico[] = [];
   let podeEditar = false;
   let authNeeded = false;
 
   try {
-    const [e, its, discs, etps, projs, ctx] = await Promise.all([
+    const [e, its, discs, etps, projs, usrs, ctx] = await Promise.all([
       getEmpreendimento(id),
       listItensPorEmpreendimento(id),
       listDisciplinas(),
       listEtapas(),
       listProjetistas(),
+      listUsuariosBasico(),
       getCurrentUserWithRole(),
     ]);
     emp = e;
@@ -42,6 +46,7 @@ export default async function EmpreendimentoDetalhePage({
     disciplinas = discs;
     etapas = etps;
     projetistas = projs;
+    usuarios = usrs;
     podeEditar = ctx?.papel === "admin" || ctx?.papel === "equipe";
   } catch (err) {
     if (err instanceof AuthError) authNeeded = true;
@@ -110,6 +115,7 @@ export default async function EmpreendimentoDetalhePage({
         disciplinas={disciplinas}
         etapas={etapas}
         projetistas={projetistas}
+        usuarios={usuarios}
         podeEditar={podeEditar}
         hojeISO={hojeISO}
       />

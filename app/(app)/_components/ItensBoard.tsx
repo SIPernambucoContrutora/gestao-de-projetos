@@ -6,6 +6,7 @@ import type { Disciplina, Etapa, HistoricoAlteracao, Projetista, StatusItem } fr
 import type { ItemComRefs } from "@/lib/actions/itens";
 import { deleteItem, updateItem } from "@/lib/actions/itens";
 import { listHistoricoPorItem } from "@/lib/actions/historico";
+import type { UsuarioBasico } from "@/lib/actions/usuarios";
 import { derivarStatus, formatBR, parseISO, rotuloCampo, ROTULO_STATUS } from "@/lib/ui/status";
 import { DesvioBadge, StatusBadge } from "./StatusBadge";
 import { NovoItemButton } from "./NovoItemButton";
@@ -15,6 +16,7 @@ type ChipKey = "all" | StatusItem | "atrasado";
 const CHIPS: { key: ChipKey; label: string }[] = [
   { key: "all", label: "Todos" },
   { key: "finalizado", label: "Finalizados" },
+  { key: "em_analise", label: "Em análise" },
   { key: "em_andamento", label: "Em andamento" },
   { key: "atrasado", label: "Atrasados" },
   { key: "pendente", label: "Pendentes" },
@@ -26,6 +28,7 @@ export function ItensBoard({
   disciplinas,
   etapas,
   projetistas,
+  usuarios,
   podeEditar,
   hojeISO,
 }: {
@@ -34,6 +37,7 @@ export function ItensBoard({
   disciplinas: Disciplina[];
   etapas: Etapa[];
   projetistas: Projetista[];
+  usuarios: UsuarioBasico[];
   podeEditar: boolean;
   hojeISO: string;
 }) {
@@ -129,6 +133,7 @@ export function ItensBoard({
             disciplinas={disciplinas}
             etapas={etapas}
             projetistas={projetistas}
+            usuarios={usuarios}
           />
         )}
       </div>
@@ -199,6 +204,7 @@ export function ItensBoard({
           item={aberto}
           etapas={etapas}
           projetistas={projetistas}
+          usuarios={usuarios}
           podeEditar={podeEditar}
           hoje={hoje}
           onClose={() => setAberto(null)}
@@ -214,6 +220,7 @@ export function ItensBoard({
 
 type Draft = {
   status: StatusItem;
+  usuarioAnaliseId: string;
   etapaId: string;
   projetistaId: string;
   dataInicio: string;
@@ -228,6 +235,7 @@ type Draft = {
 function toDraft(it: ItemComRefs): Draft {
   return {
     status: it.status,
+    usuarioAnaliseId: it.usuarioAnaliseId ?? "",
     etapaId: it.etapaId,
     projetistaId: it.projetistaId ?? "",
     dataInicio: it.dataInicio ?? "",
@@ -244,6 +252,7 @@ function ItemDrawer({
   item,
   etapas,
   projetistas,
+  usuarios,
   podeEditar,
   hoje,
   onClose,
@@ -251,6 +260,7 @@ function ItemDrawer({
   item: ItemComRefs;
   etapas: Etapa[];
   projetistas: Projetista[];
+  usuarios: UsuarioBasico[];
   podeEditar: boolean;
   hoje: Date;
   onClose: () => void;
@@ -275,12 +285,15 @@ function ItemDrawer({
   const set = (campo: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setDraft((d) => ({ ...d, [campo]: e.target.value }));
 
+  const emAnalise = draft.status === "em_analise";
+
   const derivado = derivarStatus(
     {
       status: draft.status,
       prazoPrevisto: draft.prazoPrevisto || null,
       prazoReprogramado: draft.prazoReprogramado || null,
       prazoRealizado: draft.prazoRealizado || null,
+      usuarioAnaliseNome: usuarios.find((u) => u.id === draft.usuarioAnaliseId)?.nome ?? null,
     },
     hoje,
   );
@@ -303,11 +316,18 @@ function ItemDrawer({
   }
 
   async function salvar() {
+    // 'Em análise' sem responsável é inconsistente — barra antes do round-trip
+    // (a Server Action valida de novo, por segurança).
+    if (emAnalise && !draft.usuarioAnaliseId) {
+      setErro("Selecione o usuário da análise para salvar o status Em análise.");
+      return;
+    }
     setSalvando(true);
     setErro(null);
     try {
       await updateItem(item.id, {
         status: draft.status,
+        usuarioAnaliseId: emAnalise ? draft.usuarioAnaliseId : null,
         etapaId: draft.etapaId,
         projetistaId: draft.projetistaId || null,
         dataInicio: draft.dataInicio || null,
@@ -367,6 +387,26 @@ function ItemDrawer({
               </select>
               <span className="field__hint">A cor do badge é derivada do status + prazos.</span>
             </label>
+
+            {emAnalise && (
+              <label className="field">
+                <span className="field__label">Usuário da análise *</span>
+                <select
+                  className="input"
+                  value={draft.usuarioAnaliseId}
+                  onChange={set("usuarioAnaliseId")}
+                  disabled={!podeEditar}
+                >
+                  <option value="">Selecione…</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome}
+                    </option>
+                  ))}
+                </select>
+                <span className="field__hint">Quem está validando o que o projetista entregou.</span>
+              </label>
+            )}
 
             <label className="field">
               <span className="field__label">Etapa</span>

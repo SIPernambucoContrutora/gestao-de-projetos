@@ -3,6 +3,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
+import { neonAuthUser } from "@/db/neonAuth";
 import {
   disciplinas,
   empreendimentos,
@@ -13,6 +14,7 @@ import {
 } from "@/db/schema";
 import type { ItemProjeto, StatusItem } from "@/db/schema";
 import { requireEscrita, requireUser } from "@/lib/auth/session";
+import { rotuloUsuario } from "@/lib/ui/status";
 
 /* ------------------------------------------------------------------ *
  * Tipos
@@ -25,6 +27,7 @@ export type ItemInput = {
   projetistaId?: string | null;
   planta?: string | null;
   status?: StatusItem;
+  usuarioAnaliseId?: string | null; // obrigatório quando status = 'em_analise'
   dataInicio?: string | null; // 'YYYY-MM-DD'
   prazoPrevisto?: string | null;
   prazoReprogramado?: string | null;
@@ -44,6 +47,7 @@ const CAMPOS_EDITAVEIS = {
   projetistaId: "projetista",
   planta: "planta",
   status: "status",
+  usuarioAnaliseId: "usuario_analise",
   dataInicio: "data_inicio",
   prazoPrevisto: "prazo_previsto",
   prazoReprogramado: "prazo_reprogramado",
@@ -74,15 +78,41 @@ export type ItemComRefs = ItemProjeto & {
   disciplinaNome: string;
   etapaNome: string;
   projetistaNome: string | null;
+  usuarioAnaliseNome: string | null;
 };
 
 export type ItemDashboard = ItemComRefs & {
   empreendimentoNome: string;
 };
 
-// Ordena pela data-alvo mais próxima da data atual: reprogramado tem
-// precedência sobre previsto; itens sem nenhuma data ficam por último.
+// Ordem de trabalho das listagens:
+//  1) status — pendente no topo (é o que precisa ser programado), em
+//     andamento e em análise no meio, finalizado por último;
+//  2) dentro do grupo, a data-alvo mais próxima primeiro (reprogramado tem
+//     precedência sobre previsto); itens sem nenhuma data ficam ao final.
+// O CASE espelha ORDEM_STATUS em lib/ui/status.ts.
+const ORDEM_STATUS_SQL = sql`case ${itensProjeto.status}
+  when 'pendente' then 0
+  when 'em_andamento' then 1
+  when 'em_analise' then 2
+  when 'finalizado' then 3
+  else 4 end asc`;
+
 const ORDEM_DATA_ALVO = sql`coalesce(${itensProjeto.prazoReprogramado}, ${itensProjeto.prazoPrevisto}) asc nulls last`;
+
+// Nome exibível de quem analisa: o join com neon_auth.user é por cast, pois
+// usuario_analise_id é text e neon_auth.user.id é uuid (mesma razão do join
+// de usuarios_papel em lib/actions/usuarios.ts).
+const JOIN_USUARIO_ANALISE = sql`${neonAuthUser.id}::text = ${itensProjeto.usuarioAnaliseId}`;
+
+function nomeAnalise(
+  usuarioAnaliseId: string | null,
+  name: string | null,
+  email: string | null,
+): string | null {
+  if (!usuarioAnaliseId) return null;
+  return rotuloUsuario(name, email);
+}
 
 /* ------------------------------------------------------------------ *
  * Leitura
@@ -109,19 +139,23 @@ export async function listItensPorEmpreendimento(
       disciplinaNome: disciplinas.nome,
       etapaNome: etapas.nome,
       projetistaNome: projetistas.nome,
+      analiseName: neonAuthUser.name,
+      analiseEmail: neonAuthUser.email,
     })
     .from(itensProjeto)
     .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
     .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
     .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
+    .leftJoin(neonAuthUser, JOIN_USUARIO_ANALISE)
     .where(and(...conds))
-    .orderBy(ORDEM_DATA_ALVO);
+    .orderBy(ORDEM_STATUS_SQL, ORDEM_DATA_ALVO);
 
   return rows.map((r) => ({
     ...r.item,
     disciplinaNome: r.disciplinaNome,
     etapaNome: r.etapaNome,
     projetistaNome: r.projetistaNome,
+    usuarioAnaliseNome: nomeAnalise(r.item.usuarioAnaliseId, r.analiseName, r.analiseEmail),
   }));
 }
 
@@ -136,19 +170,23 @@ export async function listTodosItens(): Promise<ItemDashboard[]> {
       etapaNome: etapas.nome,
       projetistaNome: projetistas.nome,
       empreendimentoNome: empreendimentos.nome,
+      analiseName: neonAuthUser.name,
+      analiseEmail: neonAuthUser.email,
     })
     .from(itensProjeto)
     .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
     .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
     .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
+    .leftJoin(neonAuthUser, JOIN_USUARIO_ANALISE)
     .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
-    .orderBy(ORDEM_DATA_ALVO);
+    .orderBy(ORDEM_STATUS_SQL, ORDEM_DATA_ALVO);
 
   return rows.map((r) => ({
     ...r.item,
     disciplinaNome: r.disciplinaNome,
     etapaNome: r.etapaNome,
     projetistaNome: r.projetistaNome,
+    usuarioAnaliseNome: nomeAnalise(r.item.usuarioAnaliseId, r.analiseName, r.analiseEmail),
     empreendimentoNome: r.empreendimentoNome,
   }));
 }
@@ -157,12 +195,27 @@ export async function listTodosItens(): Promise<ItemDashboard[]> {
  * Escrita
  * ------------------------------------------------------------------ */
 
+/**
+ * Regra do status 'em_analise': só existe com um usuário responsável pela
+ * análise. Validado no servidor (o cliente também avisa antes de salvar).
+ */
+function validarAnalise(status: StatusItem, usuarioAnaliseId: string | null): void {
+  if (status === "em_analise" && !usuarioAnaliseId) {
+    throw new Error("Informe o usuário da análise para deixar o item Em análise.");
+  }
+}
+
 export async function createItem(input: ItemInput): Promise<ItemProjeto> {
   const { user } = await requireEscrita();
 
   if (!input.empreendimentoId) throw new Error("empreendimentoId é obrigatório.");
   if (!input.disciplinaId) throw new Error("disciplinaId é obrigatório.");
   if (!input.etapaId) throw new Error("etapaId é obrigatório.");
+
+  const status = input.status ?? "pendente";
+  // Fora de 'em_analise' o responsável não se aplica — não guardamos resíduo.
+  const usuarioAnaliseId = status === "em_analise" ? input.usuarioAnaliseId ?? null : null;
+  validarAnalise(status, usuarioAnaliseId);
 
   // Contexto para desnormalizar no histórico (sobrevive à exclusão).
   const [emp] = await db
@@ -198,7 +251,8 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
         etapaId: input.etapaId,
         projetistaId: input.projetistaId ?? null,
         planta: input.planta ?? null,
-        status: input.status ?? "pendente",
+        status,
+        usuarioAnaliseId,
         dataInicio: input.dataInicio ?? null,
         prazoPrevisto: input.prazoPrevisto ?? null,
         prazoReprogramado: input.prazoReprogramado ?? null,
@@ -248,23 +302,40 @@ export async function updateItem(
       discNome: disciplinas.nome,
       etapaNome: etapas.nome,
       projetistaNome: projetistas.nome,
+      analiseName: neonAuthUser.name,
+      analiseEmail: neonAuthUser.email,
     })
     .from(itensProjeto)
     .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
     .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
     .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
     .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
+    .leftJoin(neonAuthUser, JOIN_USUARIO_ANALISE)
     .where(eq(itensProjeto.id, id))
     .limit(1);
 
   if (!atual) throw new Error("Item não encontrado.");
   const item = atual.item;
 
+  // Estado FINAL do par status/usuário da análise (o patch pode trazer só um
+  // dos dois). Fora de 'em_analise' o responsável é limpo, para não sobrar
+  // resíduo de uma análise anterior.
+  const statusFinal = patch.status ?? item.status;
+  const usuarioAnaliseFinal =
+    statusFinal === "em_analise"
+      ? "usuarioAnaliseId" in patch
+        ? patch.usuarioAnaliseId ?? null
+        : item.usuarioAnaliseId
+      : null;
+  validarAnalise(statusFinal, usuarioAnaliseFinal);
+  const patchFinal = { ...patch, usuarioAnaliseId: usuarioAnaliseFinal };
+
   // Nomes atuais das entidades referenciadas (para o "antigo" do diff).
   const nomeAtualPorCampo: Partial<Record<CampoEditavel, string | null>> = {
     disciplinaId: atual.discNome,
     etapaId: atual.etapaNome,
     projetistaId: atual.projetistaNome,
+    usuarioAnaliseId: nomeAnalise(item.usuarioAnaliseId, atual.analiseName, atual.analiseEmail),
   };
 
   const updateValues: Record<string, unknown> = {};
@@ -274,14 +345,34 @@ export async function updateItem(
     valorNovo: string | null;
   }[] = [];
 
-  for (const key of Object.keys(patch) as CampoEditavel[]) {
+  for (const key of Object.keys(patchFinal) as CampoEditavel[]) {
     if (!(key in CAMPOS_EDITAVEIS)) continue; // ignora chaves não editáveis
-    const novo = patch[key] as unknown;
+    const novo = patchFinal[key] as unknown;
     const antigo = (item as Record<string, unknown>)[key];
 
     if (toText(antigo) === toText(novo)) continue; // sem mudança
 
     updateValues[key] = novo ?? null;
+
+    // O usuário da análise vive no schema do Neon Auth — o histórico grava
+    // o nome legível, não o uuid.
+    if (key === "usuarioAnaliseId") {
+      let nomeNovo: string | null = null;
+      if (novo) {
+        const [u] = await db
+          .select({ name: neonAuthUser.name, email: neonAuthUser.email })
+          .from(neonAuthUser)
+          .where(sql`${neonAuthUser.id}::text = ${novo as string}`)
+          .limit(1);
+        nomeNovo = u ? rotuloUsuario(u.name, u.email) : null;
+      }
+      diffs.push({
+        campo: CAMPOS_EDITAVEIS[key],
+        valorAntigo: nomeAtualPorCampo.usuarioAnaliseId ?? null,
+        valorNovo: nomeNovo,
+      });
+      continue;
+    }
 
     // Para campos-referência (disciplina/etapa/projetista), o histórico
     // grava o NOME, não o uuid — resolve o nome do novo valor sob demanda.

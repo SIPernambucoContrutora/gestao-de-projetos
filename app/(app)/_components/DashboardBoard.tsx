@@ -12,6 +12,7 @@ type ChipKey = "all" | StatusItem | "atrasado";
 const CHIPS: { key: ChipKey; label: string }[] = [
   { key: "all", label: "Todos" },
   { key: "finalizado", label: "Finalizados" },
+  { key: "em_analise", label: "Em análise" },
   { key: "em_andamento", label: "Em andamento" },
   { key: "atrasado", label: "Atrasados" },
   { key: "pendente", label: "Pendentes" },
@@ -46,15 +47,17 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
   );
 
   const metricas = useMemo(() => {
-    let fin = 0, and = 0, atr = 0;
+    let fin = 0, and = 0, atr = 0, pend = 0, ana = 0;
     for (const i of doEmp) {
       const d = derivarStatus(i, hoje);
       if (i.status === "finalizado") fin++;
       else if (d.atrasado) atr++;
       else if (i.status === "em_andamento") and++;
+      if (i.status === "pendente") pend++;
+      if (i.status === "em_analise") ana++;
     }
     const pct = doEmp.length ? Math.round((fin / doEmp.length) * 100) : 0;
-    return { total: doEmp.length, fin, and, atr, pct };
+    return { total: doEmp.length, fin, and, atr, pend, ana, pct };
   }, [doEmp, hoje]);
 
   const filtrados = useMemo(() => {
@@ -78,7 +81,9 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
     { label: "Total de itens", valor: String(metricas.total), sub: fEmp === "all" ? `${empOptions.length} empreendimentos` : "no empreendimento", dot: "cinza" },
     { label: "Finalizados", valor: `${metricas.pct}%`, sub: `${metricas.fin} de ${metricas.total} itens`, dot: "verde" },
     { label: "Em andamento", valor: String(metricas.and), sub: "dentro do prazo", dot: "ambar" },
+    { label: "Em análise", valor: String(metricas.ana), sub: "aguardando validação", dot: "ambar" },
     { label: "Atrasados", valor: String(metricas.atr), sub: "exigem reprogramação", dot: "vermelho" },
+    { label: "Pendentes", valor: String(metricas.pend), sub: "aguardando início", dot: "cinza" },
   ];
 
   return (

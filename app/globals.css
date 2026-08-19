@@ -335,8 +335,11 @@ button {
 .dot--vermelho { background: #b23a2b; }
 .dot--cinza { background: #a8c8cc; }
 
+/* Grade elástica: os cards ficam em uma linha só enquanto couberem com
+   largura legível e quebram para a linha de baixo em telas estreitas. */
 .metrics {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 20px;
   padding: 22px 0 20px;
 }

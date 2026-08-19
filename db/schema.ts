@@ -14,11 +14,13 @@ import {
  * Enums
  * ------------------------------------------------------------------ */
 
-// Status é sempre um dos três valores. A cor no frontend é DERIVADA
-// automaticamente do valor (não é mais escolhida livremente).
+// Ciclo de vida do item. A cor no frontend é DERIVADA automaticamente do
+// valor (não é mais escolhida livremente). 'em_analise' é a etapa entre o
+// projetista concluir e a equipe validar — exige usuario_analise_id.
 export const statusItemEnum = pgEnum("status_item", [
   "pendente",
   "em_andamento",
+  "em_analise",
   "finalizado",
 ]);
 
@@ -106,6 +108,9 @@ export const itensProjeto = pgTable(
     }),
     planta: text("planta"),
     status: statusItemEnum("status").notNull().default("pendente"),
+    // Usuário que conduz a análise (id do Neon Auth, text, sem FK física).
+    // Obrigatório quando status = 'em_analise' (validado nas Server Actions).
+    usuarioAnaliseId: text("usuario_analise_id"),
     dataInicio: date("data_inicio"),
     prazoPrevisto: date("prazo_previsto"),
     prazoReprogramado: date("prazo_reprogramado"),
@@ -122,6 +127,7 @@ export const itensProjeto = pgTable(
     index("itens_projeto_etapa_id_idx").on(t.etapaId),
     index("itens_projeto_projetista_id_idx").on(t.projetistaId),
     index("itens_projeto_status_idx").on(t.status),
+    index("itens_projeto_usuario_analise_id_idx").on(t.usuarioAnaliseId),
   ],
 );
 

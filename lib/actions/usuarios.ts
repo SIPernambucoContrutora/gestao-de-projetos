@@ -7,7 +7,8 @@ import { db } from "@/db";
 import { neonAuthUser } from "@/db/neonAuth";
 import { usuariosPapel } from "@/db/schema";
 import type { PapelUsuario } from "@/db/schema";
-import { AuthError, requireAdmin } from "@/lib/auth/session";
+import { AuthError, requireAdmin, requireUser } from "@/lib/auth/session";
+import { rotuloUsuario } from "@/lib/ui/status";
 
 export type UsuarioListado = {
   id: string;
@@ -37,6 +38,26 @@ export async function listUsuarios(): Promise<UsuarioListado[]> {
     .orderBy(asc(neonAuthUser.email));
 
   return rows.map((r) => ({ ...r, papel: r.papel ?? "leitura" }));
+}
+
+export type UsuarioBasico = { id: string; nome: string };
+
+/**
+ * Lista id + nome de todos os usuários, para selects da aplicação (ex.:
+ * "Usuário da análise"). Diferente de listUsuarios, não expõe papéis nem
+ * e-mail cru, então basta estar autenticado.
+ */
+export async function listUsuariosBasico(): Promise<UsuarioBasico[]> {
+  await requireUser();
+
+  const rows = await db
+    .select({ id: neonAuthUser.id, name: neonAuthUser.name, email: neonAuthUser.email })
+    .from(neonAuthUser)
+    .orderBy(asc(neonAuthUser.email));
+
+  return rows
+    .map((r) => ({ id: r.id, nome: rotuloUsuario(r.name, r.email) }))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
 export type CriarUsuarioInput = {
