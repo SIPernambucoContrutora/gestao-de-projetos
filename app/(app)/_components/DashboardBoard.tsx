@@ -151,14 +151,14 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
         </div>
 
         <div className="table-wrap">
-          <table className="data-table" style={{ minWidth: "1400px" }}>
+          <table className="data-table" style={{ minWidth: "1700px" }}>
             <thead>
               <tr>
                 <th style={{ width: "44px" }}>#</th>
                 <th>Empreendimento</th>
                 <th>Disciplina</th>
                 <th>Etapa</th>
-                <th>Planta / escopo</th>
+                <th style={{ minWidth: "420px" }}>Planta / escopo</th>
                 <th>Projetista</th>
                 <th>Status</th>
                 <th>Data início</th>

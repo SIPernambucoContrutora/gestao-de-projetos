@@ -145,11 +145,13 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
 
   if (it.status === "finalizado") {
     tom = "verde";
+  } else if (it.status === "em_analise") {
+    // Em análise tem cor e filtro próprios — não vira "Atrasado" mesmo com
+    // o prazo vencido, já que o item está com o analista, não parado.
+    tom = "azul";
   } else if (alvo && alvo < hoje) {
     tom = "vermelho";
     rotulo = "Atrasado";
-  } else if (it.status === "em_analise") {
-    tom = "azul";
   } else if (it.status === "em_andamento") {
     tom = "ambar";
   }
