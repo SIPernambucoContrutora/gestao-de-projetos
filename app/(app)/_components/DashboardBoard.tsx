@@ -81,7 +81,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
     { label: "Total de itens", valor: String(metricas.total), sub: fEmp === "all" ? `${empOptions.length} empreendimentos` : "no empreendimento", dot: "cinza" },
     { label: "Finalizados", valor: `${metricas.pct}%`, sub: `${metricas.fin} de ${metricas.total} itens`, dot: "verde" },
     { label: "Em andamento", valor: String(metricas.and), sub: "dentro do prazo", dot: "ambar" },
-    { label: "Em análise", valor: String(metricas.ana), sub: "aguardando validação", dot: "ambar" },
+    { label: "Em análise", valor: String(metricas.ana), sub: "aguardando validação", dot: "azul" },
     { label: "Atrasados", valor: String(metricas.atr), sub: "exigem reprogramação", dot: "vermelho" },
     { label: "Pendentes", valor: String(metricas.pend), sub: "aguardando início", dot: "cinza" },
   ];

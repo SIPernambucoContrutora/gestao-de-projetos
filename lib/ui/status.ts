@@ -6,7 +6,7 @@ import type { StatusItem } from "@/db/schema";
  * Usado no servidor e no cliente, então é puro (sem I/O).
  * ------------------------------------------------------------------ */
 
-export type Tom = "verde" | "ambar" | "vermelho" | "cinza";
+export type Tom = "verde" | "ambar" | "vermelho" | "cinza" | "azul";
 
 export const ROTULO_STATUS: Record<StatusItem, string> = {
   pendente: "Pendente",
@@ -148,7 +148,9 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
   } else if (alvo && alvo < hoje) {
     tom = "vermelho";
     rotulo = "Atrasado";
-  } else if (it.status === "em_andamento" || it.status === "em_analise") {
+  } else if (it.status === "em_analise") {
+    tom = "azul";
+  } else if (it.status === "em_andamento") {
     tom = "ambar";
   }
 

@@ -334,6 +334,7 @@ button {
 .dot--ambar { background: #b57312; }
 .dot--vermelho { background: #b23a2b; }
 .dot--cinza { background: #a8c8cc; }
+.dot--azul { background: #1a5fb5; }
 
 /* Grade elástica: os cards ficam em uma linha só enquanto couberem com
    largura legível e quebram para a linha de baixo em telas estreitas. */
@@ -517,6 +518,13 @@ button {
 .badge--cinza .badge__dot {
   background: #8fb9bd;
 }
+.badge--azul {
+  color: #17498a;
+  background: #e6eefb;
+}
+.badge--azul .badge__dot {
+  background: #1a5fb5;
+}
 
 /* ------------------------------------------------------------------ *
  * Inputs / selects
@@ -673,7 +681,7 @@ textarea.input {
 }
 .td-wide {
   color: #3f6166;
-  max-width: 300px;
+  max-width: 460px;
 }
 .td-danger {
   color: #b23a2b;
@@ -707,6 +715,10 @@ textarea.input {
 .desvio--cinza {
   color: #436469;
   background: #e4eff0;
+}
+.desvio--azul {
+  color: #17498a;
+  background: #e6eefb;
 }
 .data-table__empty {
   padding: 28px 12px;
