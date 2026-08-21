@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   date,
   index,
   integer,
@@ -120,6 +121,9 @@ export const itensProjeto = pgTable(
     observacoes: text("observacoes"),
     revisaoAtual: text("revisao_atual").notNull().default("R00"),
     dataRevisao: date("data_revisao"),
+    // Preenchido apenas no menu de itens; exibido também no dashboard, mas
+    // somente para visualização (não editável por lá).
+    enviadoAutodoc: boolean("enviado_autodoc").notNull().default(false),
   },
   (t) => [
     index("itens_projeto_empreendimento_id_idx").on(t.empreendimentoId),

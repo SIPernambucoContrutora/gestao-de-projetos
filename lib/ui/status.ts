@@ -60,6 +60,7 @@ export const ROTULO_CAMPO_HISTORICO: Record<string, string> = {
   responsavel: "responsável",
   revisao_atual: "revisão atual",
   data_revisao: "data da revisão",
+  enviado_autodoc: "enviado para o Autodoc",
 };
 
 export function rotuloCampo(campo: string | null | undefined): string {

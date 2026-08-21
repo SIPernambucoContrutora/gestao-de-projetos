@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ItemDashboard } from "@/lib/actions/itens";
 import type { StatusItem } from "@/db/schema";
 import { derivarStatus, formatBR, parseISO } from "@/lib/ui/status";
-import { DesvioBadge, StatusBadge } from "./StatusBadge";
+import { AutodocBadge, DesvioBadge, StatusBadge } from "./StatusBadge";
 
 type ChipKey = "all" | StatusItem | "atrasado";
 
@@ -151,7 +151,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
         </div>
 
         <div className="table-wrap">
-          <table className="data-table" style={{ minWidth: "1700px" }}>
+          <table className="data-table" style={{ minWidth: "1800px" }}>
             <thead>
               <tr>
                 <th style={{ width: "44px" }}>#</th>
@@ -166,12 +166,13 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                 <th>Reprog.</th>
                 <th>Realizado</th>
                 <th className="ta-right">Desvio</th>
+                <th>Autodoc</th>
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
+                  <td colSpan={13} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
                 </tr>
               ) : (
                 filtrados.map((it) => {
@@ -194,6 +195,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                       <td className="mono td-muted">{formatBR(it.prazoReprogramado)}</td>
                       <td className="mono td-muted">{formatBR(it.prazoRealizado)}</td>
                       <td className="ta-right"><DesvioBadge tom={d.desvioTom} texto={d.desvio} /></td>
+                      <td><AutodocBadge enviado={it.enviadoAutodoc} /></td>
                     </tr>
                   );
                 })

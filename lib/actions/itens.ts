@@ -36,6 +36,7 @@ export type ItemInput = {
   observacoes?: string | null;
   revisaoAtual?: string | null; // "R00"
   dataRevisao?: string | null;
+  enviadoAutodoc?: boolean;
 };
 
 // Campos editáveis por updateItem (id, empreendimentoId e item — numeração
@@ -56,6 +57,7 @@ const CAMPOS_EDITAVEIS = {
   observacoes: "observacoes",
   revisaoAtual: "revisao_atual",
   dataRevisao: "data_revisao",
+  enviadoAutodoc: "enviado_autodoc",
 } as const;
 
 type CampoEditavel = keyof typeof CAMPOS_EDITAVEIS;
@@ -261,6 +263,7 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
         observacoes: input.observacoes ?? null,
         revisaoAtual: input.revisaoAtual?.trim() || "R00",
         dataRevisao: input.dataRevisao ?? null,
+        enviadoAutodoc: input.enviadoAutodoc ?? false,
       })
       .returning(),
     db.insert(historicoAlteracoes).values({
@@ -391,6 +394,15 @@ export async function updateItem(
         campo: CAMPOS_EDITAVEIS[key],
         valorAntigo: nomeAtualPorCampo[key] ?? null,
         valorNovo: valorNovoLegivel,
+      });
+      continue;
+    }
+
+    if (key === "enviadoAutodoc") {
+      diffs.push({
+        campo: CAMPOS_EDITAVEIS[key],
+        valorAntigo: antigo ? "Sim" : "Não",
+        valorNovo: novo ? "Sim" : "Não",
       });
       continue;
     }

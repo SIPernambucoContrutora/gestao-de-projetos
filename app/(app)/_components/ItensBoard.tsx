@@ -230,6 +230,7 @@ type Draft = {
   observacoes: string;
   revisaoAtual: string;
   dataRevisao: string;
+  enviadoAutodoc: boolean;
 };
 
 function toDraft(it: ItemComRefs): Draft {
@@ -245,6 +246,7 @@ function toDraft(it: ItemComRefs): Draft {
     observacoes: it.observacoes ?? "",
     revisaoAtual: it.revisaoAtual ?? "R00",
     dataRevisao: it.dataRevisao ?? "",
+    enviadoAutodoc: it.enviadoAutodoc,
   };
 }
 
@@ -284,6 +286,9 @@ function ItemDrawer({
 
   const set = (campo: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setDraft((d) => ({ ...d, [campo]: e.target.value }));
+
+  const setChecked = (campo: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setDraft((d) => ({ ...d, [campo]: e.target.checked }));
 
   const emAnalise = draft.status === "em_analise";
 
@@ -337,6 +342,7 @@ function ItemDrawer({
         observacoes: draft.observacoes || null,
         revisaoAtual: draft.revisaoAtual || "R00",
         dataRevisao: draft.dataRevisao || null,
+        enviadoAutodoc: draft.enviadoAutodoc,
       });
       router.refresh();
       onClose();
@@ -457,6 +463,16 @@ function ItemDrawer({
             </label>
             <DateField label="Data da revisão" value={draft.dataRevisao} onChange={set("dataRevisao")} disabled={!podeEditar} />
           </div>
+
+          <label className="field field--checkbox" style={{ marginTop: "14px" }}>
+            <input
+              type="checkbox"
+              checked={draft.enviadoAutodoc}
+              onChange={setChecked("enviadoAutodoc")}
+              disabled={!podeEditar}
+            />
+            <span className="field__label">Enviado para o Autodoc</span>
+          </label>
 
           <label className="field" style={{ marginTop: "14px" }}>
             <span className="field__label">Observações</span>
