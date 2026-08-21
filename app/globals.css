@@ -827,9 +827,26 @@ textarea.input {
   margin-bottom: 0;
 }
 .field--checkbox input[type="checkbox"] {
+  appearance: none;
   width: 15px;
   height: 15px;
-  accent-color: var(--accent, #2f7d6e);
+  margin: 0;
+  border: 1.5px solid #b9c4c6;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+.field--checkbox input[type="checkbox"]:checked {
+  border-color: #1a5fb5;
+  background-color: #1a5fb5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 11px;
+}
+.field--checkbox input[type="checkbox"]:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 .field__hint {
   display: block;

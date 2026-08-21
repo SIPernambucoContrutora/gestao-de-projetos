@@ -8,7 +8,7 @@ import { deleteItem, updateItem } from "@/lib/actions/itens";
 import { listHistoricoPorItem } from "@/lib/actions/historico";
 import type { UsuarioBasico } from "@/lib/actions/usuarios";
 import { derivarStatus, formatBR, parseISO, rotuloCampo, ROTULO_STATUS } from "@/lib/ui/status";
-import { DesvioBadge, StatusBadge } from "./StatusBadge";
+import { AutodocBadge, DesvioBadge, StatusBadge } from "./StatusBadge";
 import { NovoItemButton } from "./NovoItemButton";
 
 type ChipKey = "all" | StatusItem | "atrasado";
@@ -139,7 +139,7 @@ export function ItensBoard({
       </div>
 
       <div className="table-wrap">
-        <table className="data-table" style={{ minWidth: "1360px" }}>
+        <table className="data-table" style={{ minWidth: "1460px" }}>
           <thead>
             <tr>
               <th style={{ width: "44px" }}>#</th>
@@ -154,12 +154,13 @@ export function ItensBoard({
               <th>Realizado</th>
               <th>Meta</th>
               <th className="ta-right">Desvio</th>
+              <th>Autodoc</th>
             </tr>
           </thead>
           <tbody>
             {filtrados.length === 0 ? (
               <tr>
-                <td colSpan={12} className="data-table__empty">
+                <td colSpan={13} className="data-table__empty">
                   Nenhum item corresponde aos filtros.
                 </td>
               </tr>
@@ -189,6 +190,9 @@ export function ItensBoard({
                     <td className="mono td-muted">{it.metaDias ?? "—"}</td>
                     <td className="ta-right">
                       <DesvioBadge tom={d.desvioTom} texto={d.desvio} />
+                    </td>
+                    <td>
+                      <AutodocBadge enviado={it.enviadoAutodoc} />
                     </td>
                   </tr>
                 );
