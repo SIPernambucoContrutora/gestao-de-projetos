@@ -13,6 +13,7 @@ export const ROTULO_STATUS: Record<StatusItem, string> = {
   em_andamento: "Em andamento",
   em_analise: "Em análise",
   finalizado: "Finalizado",
+  cancelado: "Cancelado",
 };
 
 /**
@@ -25,6 +26,7 @@ export const ORDEM_STATUS: Record<StatusItem, number> = {
   em_andamento: 1,
   em_analise: 2,
   finalizado: 3,
+  cancelado: 4,
 };
 
 /**
@@ -146,6 +148,10 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
 
   if (it.status === "finalizado") {
     tom = "verde";
+  } else if (it.status === "cancelado") {
+    // Cancelado sai do fluxo de prazos: vermelho, mas nunca conta como
+    // atrasado — não há o que reprogramar num item que não será entregue.
+    tom = "vermelho";
   } else if (it.status === "em_analise") {
     // Em análise tem cor e filtro próprios — não vira "Atrasado" mesmo com
     // o prazo vencido, já que o item está com o analista, não parado.
@@ -189,7 +195,7 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
       desvio = "Finalizado no prazo";
       desvioTom = "verde";
     }
-  } else if (alvo && it.status !== "finalizado") {
+  } else if (alvo && it.status !== "finalizado" && it.status !== "cancelado") {
     const d = diffDias(hoje, alvo);
     if (d > 0) {
       desvio = reprogramado ? `Atraso de ${d} ${d === 1 ? "dia" : "dias"}` : "Necessário reprogramar";
@@ -200,5 +206,6 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
     }
   }
 
-  return { tom, rotulo, atrasado: tom === "vermelho", desvio, desvioTom };
+  const atrasado = tom === "vermelho" && it.status !== "cancelado";
+  return { tom, rotulo, atrasado, desvio, desvioTom };
 }

@@ -16,6 +16,7 @@ const CHIPS: { key: ChipKey; label: string }[] = [
   { key: "em_andamento", label: "Em andamento" },
   { key: "atrasado", label: "Atrasados" },
   { key: "pendente", label: "Pendentes" },
+  { key: "cancelado", label: "Cancelados" },
 ];
 
 export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hojeISO: string }) {
@@ -47,7 +48,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
   );
 
   const metricas = useMemo(() => {
-    let fin = 0, and = 0, atr = 0, pend = 0, ana = 0;
+    let fin = 0, and = 0, atr = 0, pend = 0, ana = 0, can = 0;
     for (const i of doEmp) {
       const d = derivarStatus(i, hoje);
       if (i.status === "finalizado") fin++;
@@ -55,9 +56,13 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
       else if (i.status === "em_andamento") and++;
       if (i.status === "pendente") pend++;
       if (i.status === "em_analise") ana++;
+      if (i.status === "cancelado") can++;
     }
-    const pct = doEmp.length ? Math.round((fin / doEmp.length) * 100) : 0;
-    return { total: doEmp.length, fin, and, atr, pend, ana, pct };
+    // Cancelados saem da base do percentual: nunca serão finalizados, então
+    // mantê-los no denominador puxaria o avanço para baixo indefinidamente.
+    const base = doEmp.length - can;
+    const pct = base ? Math.round((fin / base) * 100) : 0;
+    return { total: doEmp.length, fin, and, atr, pend, ana, can, pct };
   }, [doEmp, hoje]);
 
   const filtrados = useMemo(() => {
@@ -79,11 +84,12 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
 
   const cards = [
     { label: "Total de itens", valor: String(metricas.total), sub: fEmp === "all" ? `${empOptions.length} empreendimentos` : "no empreendimento", dot: "cinza" },
-    { label: "Finalizados", valor: `${metricas.pct}%`, sub: `${metricas.fin} de ${metricas.total} itens`, dot: "verde" },
+    { label: "Finalizados", valor: `${metricas.pct}%`, sub: `${metricas.fin} de ${metricas.total - metricas.can} itens`, dot: "verde" },
     { label: "Em andamento", valor: String(metricas.and), sub: "dentro do prazo", dot: "ambar" },
     { label: "Em análise", valor: String(metricas.ana), sub: "aguardando validação", dot: "azul" },
     { label: "Atrasados", valor: String(metricas.atr), sub: "exigem reprogramação", dot: "vermelho" },
     { label: "Pendentes", valor: String(metricas.pend), sub: "aguardando início", dot: "cinza" },
+    { label: "Cancelados", valor: String(metricas.can), sub: "fora do fluxo", dot: "vermelho" },
   ];
 
   return (

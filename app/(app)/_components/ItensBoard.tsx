@@ -20,6 +20,7 @@ const CHIPS: { key: ChipKey; label: string }[] = [
   { key: "em_andamento", label: "Em andamento" },
   { key: "atrasado", label: "Atrasados" },
   { key: "pendente", label: "Pendentes" },
+  { key: "cancelado", label: "Cancelados" },
 ];
 
 export function ItensBoard({

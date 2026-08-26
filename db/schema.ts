@@ -18,11 +18,13 @@ import {
 // Ciclo de vida do item. A cor no frontend é DERIVADA automaticamente do
 // valor (não é mais escolhida livremente). 'em_analise' é a etapa entre o
 // projetista concluir e a equipe validar — exige usuario_analise_id.
+// 'cancelado' encerra o item sem entrega — sai do fluxo de prazos.
 export const statusItemEnum = pgEnum("status_item", [
   "pendente",
   "em_andamento",
   "em_analise",
   "finalizado",
+  "cancelado",
 ]);
 
 // Papéis de acesso. O papel é atributo da APLICAÇÃO (tabela usuarios_papel),
