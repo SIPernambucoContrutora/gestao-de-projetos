@@ -60,9 +60,14 @@ export function NovoItemButton({
   // lista. Encerrar o item ou mandar para análise segue liberado.
   const semPrevisto = !form.prazoPrevisto;
   const pendente = form.status === "pendente";
-  const opcoesStatus = semPrevisto
-    ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
-    : STATUS_SELECIONAVEIS;
+  // Com prazo realizado o item já nasce finalizado; só cancelar tem
+  // precedência sobre isso (ver resolverStatus).
+  const finalizado = form.status === "finalizado";
+  const opcoesStatus = finalizado
+    ? STATUS_SELECIONAVEIS.filter((s) => s === "cancelado")
+    : semPrevisto
+      ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
+      : STATUS_SELECIONAVEIS;
 
   // Mexer no prazo previsto reavalia o status na hora, nos dois sentidos.
   function setPrazoPrevisto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -70,7 +75,17 @@ export function NovoItemButton({
     setForm((f) => ({
       ...f,
       prazoPrevisto,
-      status: resolverStatus(f.status, prazoPrevisto),
+      status: resolverStatus(f.status, prazoPrevisto, f.prazoRealizado || null),
+    }));
+  }
+
+  // Idem para o realizado: preencher finaliza, limpar reabre.
+  function setPrazoRealizado(e: React.ChangeEvent<HTMLInputElement>) {
+    const prazoRealizado = e.target.value;
+    setForm((f) => ({
+      ...f,
+      prazoRealizado,
+      status: resolverStatus(f.status, f.prazoPrevisto || null, prazoRealizado || null),
     }));
   }
 
@@ -172,18 +187,28 @@ export function NovoItemButton({
                         {ROTULO_STATUS.pendente}
                       </option>
                     )}
+                    {finalizado && (
+                      <option value="finalizado" disabled>
+                        {ROTULO_STATUS.finalizado}
+                      </option>
+                    )}
                     {opcoesStatus.map((s) => (
                       <option key={s} value={s}>
                         {ROTULO_STATUS[s]}
                       </option>
                     ))}
                   </select>
-                  {semPrevisto && (
+                  {finalizado ? (
+                    <span className="field__hint">
+                      Com prazo realizado o item já nasce Finalizado. Limpe a data para
+                      escolher outro status.
+                    </span>
+                  ) : semPrevisto ? (
                     <span className="field__hint">
                       Sem prazo previsto o item fica Pendente. Informe o previsto para
                       ele entrar em andamento.
                     </span>
-                  )}
+                  ) : null}
                 </label>
                 <label className="field">
                   <span className="field__label">Prioridade</span>
@@ -230,7 +255,7 @@ export function NovoItemButton({
                 </label>
                 <label className="field">
                   <span className="field__label">Prazo realizado</span>
-                  <input type="date" className="input mono" value={form.prazoRealizado} onChange={set("prazoRealizado")} />
+                  <input type="date" className="input mono" value={form.prazoRealizado} onChange={setPrazoRealizado} />
                 </label>
               </div>
 

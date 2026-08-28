@@ -336,9 +336,15 @@ function ItemDrawer({
   // para análise segue liberado nos dois casos.
   const semPrevisto = !draft.prazoPrevisto;
   const pendente = draft.status === "pendente";
-  const opcoesStatus = semPrevisto
-    ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
-    : STATUS_SELECIONAVEIS;
+  // Com prazo realizado o item está finalizado e nenhum outro status pega —
+  // exceto cancelar, que tem precedência. Deixar as demais opções na lista
+  // só produziria escolhas silenciosamente revertidas por resolverStatus.
+  const finalizado = draft.status === "finalizado";
+  const opcoesStatus = finalizado
+    ? STATUS_SELECIONAVEIS.filter((s) => s === "cancelado")
+    : semPrevisto
+      ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
+      : STATUS_SELECIONAVEIS;
 
   // Mexer no prazo previsto reavalia o status na hora, nos dois sentidos:
   // preencher tira de pendente, limpar devolve para pendente.
@@ -347,7 +353,18 @@ function ItemDrawer({
     setDraft((d) => ({
       ...d,
       prazoPrevisto,
-      status: resolverStatus(d.status, prazoPrevisto),
+      status: resolverStatus(d.status, prazoPrevisto, d.prazoRealizado || null),
+    }));
+  }
+
+  // Idem para o prazo realizado: preencher finaliza o item na hora (mesmo
+  // vindo de 'Em análise'), limpar devolve ao par pendente/em andamento.
+  function setPrazoRealizado(e: React.ChangeEvent<HTMLInputElement>) {
+    const prazoRealizado = e.target.value;
+    setDraft((d) => ({
+      ...d,
+      prazoRealizado,
+      status: resolverStatus(d.status, d.prazoPrevisto || null, prazoRealizado || null),
     }));
   }
 
@@ -450,6 +467,11 @@ function ItemDrawer({
                     {ROTULO_STATUS.pendente}
                   </option>
                 )}
+                {finalizado && (
+                  <option value="finalizado" disabled>
+                    {ROTULO_STATUS.finalizado}
+                  </option>
+                )}
                 {opcoesStatus.map((s) => (
                   <option key={s} value={s}>
                     {ROTULO_STATUS[s]}
@@ -457,9 +479,11 @@ function ItemDrawer({
                 ))}
               </select>
               <span className="field__hint">
-                {semPrevisto
-                  ? "Sem prazo previsto o item fica Pendente. Informe o previsto para ele entrar em andamento."
-                  : "A cor do badge é derivada do status + prazos."}
+                {finalizado
+                  ? "Finalizado pelo prazo realizado. Limpe a data do realizado para reabrir o item."
+                  : semPrevisto
+                    ? "Sem prazo previsto o item fica Pendente. Informe o previsto para ele entrar em andamento."
+                    : "A cor do badge é derivada do status + prazos."}
               </span>
             </label>
 
@@ -535,7 +559,7 @@ function ItemDrawer({
             <DateField label="Data de início" value={draft.dataInicio} onChange={set("dataInicio")} disabled={!podeEditar} />
             <DateField label="Prazo previsto" value={draft.prazoPrevisto} onChange={setPrazoPrevisto} disabled={!podeEditar} />
             <DateField label="Prazo reprogramado" value={draft.prazoReprogramado} onChange={set("prazoReprogramado")} disabled={!podeEditar} />
-            <DateField label="Prazo realizado" value={draft.prazoRealizado} onChange={set("prazoRealizado")} disabled={!podeEditar} />
+            <DateField label="Prazo realizado" value={draft.prazoRealizado} onChange={setPrazoRealizado} disabled={!podeEditar} />
 
           </div>
 

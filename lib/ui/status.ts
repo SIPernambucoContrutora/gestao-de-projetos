@@ -33,23 +33,32 @@ export const TOM_PRIORIDADE: Record<PrioridadeItem, Tom> = {
 };
 
 /**
- * Statuses que o usuário pode ESCOLHER num seletor. 'pendente' fica de fora:
- * ele é derivado (ver resolverStatus) e nunca é uma escolha manual.
+ * Statuses que o usuário pode ESCOLHER num seletor. Ficam de fora os dois
+ * que são DERIVADOS de datas e nunca uma escolha manual (ver resolverStatus):
+ * 'pendente' (ausência de prazo previsto) e 'finalizado' (prazo realizado).
  */
 export const STATUS_SELECIONAVEIS: StatusItem[] = [
   "em_andamento",
   "em_analise",
-  "finalizado",
   "cancelado",
 ];
 
 /**
- * Resolve o status efetivo de um item. O par pendente/em_andamento não é
- * escolhido: é uma EQUIVALÊNCIA com o prazo previsto.
- *   · sem prazo previsto  ⇒ 'pendente'   (inclusive limpando o previsto depois)
- *   · com prazo previsto  ⇒ 'em_andamento'
- * 'em_analise', 'finalizado' e 'cancelado' seguem sendo escolhas explícitas —
- * encerrar ou pôr em análise um item sem previsto continua possível.
+ * Resolve o status efetivo de um item. Dois status não são escolhidos: são
+ * EQUIVALÊNCIAS com datas, válidas nos dois sentidos.
+ *
+ *   prazo REALIZADO (tem precedência — é o fim da linha):
+ *     · preenchido ⇒ 'finalizado', venha o item de onde vier (pendente,
+ *       em andamento ou em análise);
+ *     · limpo      ⇒ o item volta ao par pendente/em_andamento abaixo.
+ *
+ *   prazo PREVISTO (só vale sem realizado):
+ *     · sem previsto ⇒ 'pendente'   (inclusive limpando o previsto depois)
+ *     · com previsto ⇒ 'em_andamento'
+ *
+ * 'em_analise' e 'cancelado' seguem sendo escolhas explícitas: pôr em análise
+ * um item sem previsto continua possível, e cancelar tem precedência sobre
+ * tudo — um item que não será entregue não é finalizado por uma data.
  *
  * Função pura — roda no servidor (autoridade) e no cliente (para refletir a
  * regra na hora, sem esperar o round-trip).
@@ -57,8 +66,13 @@ export const STATUS_SELECIONAVEIS: StatusItem[] = [
 export function resolverStatus(
   desejado: StatusItem,
   prazoPrevisto: string | null | undefined,
+  prazoRealizado?: string | null,
 ): StatusItem {
-  if (desejado !== "pendente" && desejado !== "em_andamento") return desejado;
+  if (desejado === "cancelado") return "cancelado";
+  if (prazoRealizado) return "finalizado";
+  // Sem realizado, 'finalizado' não se sustenta: cai de volta no par derivado
+  // do previsto (é assim que se desfaz uma data preenchida por engano).
+  if (desejado === "em_analise") return "em_analise";
   return prazoPrevisto ? "em_andamento" : "pendente";
 }
 

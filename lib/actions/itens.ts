@@ -270,9 +270,14 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
   if (!input.etapaId) throw new Error("etapaId é obrigatório.");
 
   // 'pendente' = sem prazo previsto; com previsto, o item já nasce em
-  // andamento. O cliente também aplica a regra, mas quem manda é aqui.
+  // andamento; e com prazo realizado já nasce finalizado. O cliente também
+  // aplica a regra, mas quem manda é aqui.
   const prazoPrevisto = input.prazoPrevisto ?? null;
-  const status = resolverStatus(input.status ?? "pendente", prazoPrevisto);
+  const status = resolverStatus(
+    input.status ?? "pendente",
+    prazoPrevisto,
+    input.prazoRealizado ?? null,
+  );
   // Fora de 'em_analise' o responsável não se aplica — não guardamos resíduo.
   const usuarioAnaliseId = status === "em_analise" ? input.usuarioAnaliseId ?? null : null;
   validarAnalise(status, usuarioAnaliseId);
@@ -378,12 +383,19 @@ export async function updateItem(
   if (!atual) throw new Error("Item não encontrado.");
   const item = atual.item;
 
-  // Estado FINAL de status/prazo previsto/usuário da análise (o patch pode
-  // trazer só parte disso). O status passa por resolverStatus: pendente e em
-  // andamento acompanham a presença do prazo previsto, nos dois sentidos.
+  // Estado FINAL de status/prazos/usuário da análise (o patch pode trazer só
+  // parte disso). O status passa por resolverStatus: finalizado acompanha o
+  // prazo realizado, e pendente/em andamento o prazo previsto — nos dois
+  // sentidos, então limpar uma data desfaz a transição que ela causou.
   const prazoPrevistoFinal =
     "prazoPrevisto" in patch ? patch.prazoPrevisto ?? null : item.prazoPrevisto;
-  const statusFinal = resolverStatus(patch.status ?? item.status, prazoPrevistoFinal);
+  const prazoRealizadoFinal =
+    "prazoRealizado" in patch ? patch.prazoRealizado ?? null : item.prazoRealizado;
+  const statusFinal = resolverStatus(
+    patch.status ?? item.status,
+    prazoPrevistoFinal,
+    prazoRealizadoFinal,
+  );
   // Fora de 'em_analise' o responsável é limpo, para não sobrar resíduo de
   // uma análise anterior.
   const usuarioAnaliseFinal =
