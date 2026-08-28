@@ -2,13 +2,33 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Disciplina, Etapa, HistoricoAlteracao, Projetista, StatusItem } from "@/db/schema";
+import type {
+  Disciplina,
+  Etapa,
+  HistoricoAlteracao,
+  PrioridadeItem,
+  Projetista,
+  RevisaoItem,
+  StatusItem,
+} from "@/db/schema";
 import type { ItemComRefs } from "@/lib/actions/itens";
 import { deleteItem, updateItem } from "@/lib/actions/itens";
 import { listHistoricoPorItem } from "@/lib/actions/historico";
+import { abrirRevisao, listRevisoesPorItem } from "@/lib/actions/revisoes";
 import type { UsuarioBasico } from "@/lib/actions/usuarios";
-import { derivarStatus, formatBR, parseISO, rotuloCampo, ROTULO_STATUS } from "@/lib/ui/status";
-import { AutodocBadge, DesvioBadge, StatusBadge } from "./StatusBadge";
+import {
+  derivarStatus,
+  formatBR,
+  parseISO,
+  PRIORIDADES,
+  rotuloCampo,
+  rotuloRevisao,
+  ROTULO_PRIORIDADE,
+  resolverStatus,
+  ROTULO_STATUS,
+  STATUS_SELECIONAVEIS,
+} from "@/lib/ui/status";
+import { AutodocBadge, DesvioBadge, PrioridadeBadge, StatusBadge } from "./StatusBadge";
 import { NovoItemButton } from "./NovoItemButton";
 
 type ChipKey = "all" | StatusItem | "atrasado";
@@ -70,16 +90,17 @@ export function ItensBoard({
     const sep = ";";
     const dt = (s: string | null) => (s ? formatBR(s) : "");
     const head = [
-      "Nº", "Disciplina", "Etapa", "Planta/escopo", "Status",
-      "Início", "Previsto", "Reprogramado", "Realizado", "Meta", "Desvio",
+      "Nº", "Disciplina", "Etapa", "Planta/escopo", "Status", "Prioridade",
+      "Início", "Previsto", "Reprogramado", "Realizado", "Desvio",
     ];
     const linhas = filtrados.map((it) => {
       const d = derivarStatus(it, hoje);
       return [
         it.item != null ? String(it.item).padStart(2, "0") : "",
         it.disciplinaNome, it.etapaNome, it.planta ?? "", d.rotulo,
+        ROTULO_PRIORIDADE[it.prioridade],
         dt(it.dataInicio), dt(it.prazoPrevisto), dt(it.prazoReprogramado), dt(it.prazoRealizado),
-        it.metaDias ?? "", d.desvio,
+        d.desvio,
       ];
     });
     const esc = (v: string) => (/[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
@@ -149,11 +170,11 @@ export function ItensBoard({
               <th>Projetista</th>
               <th>Planta / escopo</th>
               <th>Status</th>
+              <th>Prioridade</th>
               <th>Início</th>
               <th>Previsto</th>
               <th>Reprog.</th>
               <th>Realizado</th>
-              <th>Meta</th>
               <th className="ta-right">Desvio</th>
               <th>Autodoc</th>
             </tr>
@@ -184,11 +205,13 @@ export function ItensBoard({
                     <td>
                       <StatusBadge tom={d.tom} rotulo={d.rotulo} />
                     </td>
+                    <td>
+                      <PrioridadeBadge prioridade={it.prioridade} />
+                    </td>
                     <td className="mono td-muted">{formatBR(it.dataInicio)}</td>
                     <td className="mono td-muted">{formatBR(it.prazoPrevisto)}</td>
                     <td className="mono td-muted">{formatBR(it.prazoReprogramado)}</td>
                     <td className="mono td-muted">{formatBR(it.prazoRealizado)}</td>
-                    <td className="mono td-muted">{it.metaDias ?? "—"}</td>
                     <td className="ta-right">
                       <DesvioBadge tom={d.desvioTom} texto={d.desvio} />
                     </td>
@@ -225,6 +248,7 @@ export function ItensBoard({
 
 type Draft = {
   status: StatusItem;
+  prioridade: PrioridadeItem;
   usuarioAnaliseId: string;
   etapaId: string;
   projetistaId: string;
@@ -233,14 +257,13 @@ type Draft = {
   prazoReprogramado: string;
   prazoRealizado: string;
   observacoes: string;
-  revisaoAtual: string;
-  dataRevisao: string;
   enviadoAutodoc: boolean;
 };
 
 function toDraft(it: ItemComRefs): Draft {
   return {
     status: it.status,
+    prioridade: it.prioridade,
     usuarioAnaliseId: it.usuarioAnaliseId ?? "",
     etapaId: it.etapaId,
     projetistaId: it.projetistaId ?? "",
@@ -249,8 +272,6 @@ function toDraft(it: ItemComRefs): Draft {
     prazoReprogramado: it.prazoReprogramado ?? "",
     prazoRealizado: it.prazoRealizado ?? "",
     observacoes: it.observacoes ?? "",
-    revisaoAtual: it.revisaoAtual ?? "R00",
-    dataRevisao: it.dataRevisao ?? "",
     enviadoAutodoc: it.enviadoAutodoc,
   };
 }
@@ -277,13 +298,18 @@ function ItemDrawer({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [historico, setHistorico] = useState<HistoricoAlteracao[] | null>(null);
+  const [revisoes, setRevisoes] = useState<RevisaoItem[] | null>(null);
+  const [modalRevisao, setModalRevisao] = useState(false);
 
-  // Carrega o histórico do item ao abrir.
+  // Carrega histórico e revisões do item ao abrir.
   useEffect(() => {
     let vivo = true;
     listHistoricoPorItem(item.id)
       .then((h) => vivo && setHistorico(h))
       .catch(() => vivo && setHistorico([]));
+    listRevisoesPorItem(item.id)
+      .then((r) => vivo && setRevisoes(r))
+      .catch(() => vivo && setRevisoes([]));
     return () => {
       vivo = false;
     };
@@ -296,6 +322,34 @@ function ItemDrawer({
     setDraft((d) => ({ ...d, [campo]: e.target.checked }));
 
   const emAnalise = draft.status === "em_analise";
+  // Revisar só faz sentido com o item JÁ SALVO como finalizado — escolher
+  // 'Finalizado' no seletor sem salvar não acende o botão. E não se abre
+  // uma segunda revisão por cima de uma que ainda está em curso.
+  const podeRevisar = item.status === "finalizado" && !item.emRevisao;
+  // Projetista SALVO no item: é ele quem recebe a solicitação (uma troca de
+  // projetista ainda não salva no rascunho não vale aqui).
+  const projetistaDoItem = projetistas.find((p) => p.id === item.projetistaId) ?? null;
+
+  // O par 'Pendente'/'Em andamento' é derivado do prazo previsto, nunca
+  // escolhido: sem previsto só 'Pendente' é possível (aparece como opção
+  // desabilitada) e 'Em andamento' sai da lista. Encerrar o item ou mandar
+  // para análise segue liberado nos dois casos.
+  const semPrevisto = !draft.prazoPrevisto;
+  const pendente = draft.status === "pendente";
+  const opcoesStatus = semPrevisto
+    ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
+    : STATUS_SELECIONAVEIS;
+
+  // Mexer no prazo previsto reavalia o status na hora, nos dois sentidos:
+  // preencher tira de pendente, limpar devolve para pendente.
+  function setPrazoPrevisto(e: React.ChangeEvent<HTMLInputElement>) {
+    const prazoPrevisto = e.target.value;
+    setDraft((d) => ({
+      ...d,
+      prazoPrevisto,
+      status: resolverStatus(d.status, prazoPrevisto),
+    }));
+  }
 
   const derivado = derivarStatus(
     {
@@ -304,6 +358,8 @@ function ItemDrawer({
       prazoReprogramado: draft.prazoReprogramado || null,
       prazoRealizado: draft.prazoRealizado || null,
       usuarioAnaliseNome: usuarios.find((u) => u.id === draft.usuarioAnaliseId)?.nome ?? null,
+      enviadoAutodoc: draft.enviadoAutodoc,
+      emRevisao: item.emRevisao,
     },
     hoje,
   );
@@ -337,6 +393,7 @@ function ItemDrawer({
     try {
       await updateItem(item.id, {
         status: draft.status,
+        prioridade: draft.prioridade,
         usuarioAnaliseId: emAnalise ? draft.usuarioAnaliseId : null,
         etapaId: draft.etapaId,
         projetistaId: draft.projetistaId || null,
@@ -345,8 +402,6 @@ function ItemDrawer({
         prazoReprogramado: draft.prazoReprogramado || null,
         prazoRealizado: draft.prazoRealizado || null,
         observacoes: draft.observacoes || null,
-        revisaoAtual: draft.revisaoAtual || "R00",
-        dataRevisao: draft.dataRevisao || null,
         enviadoAutodoc: draft.enviadoAutodoc,
       });
       router.refresh();
@@ -390,13 +445,38 @@ function ItemDrawer({
                 onChange={set("status")}
                 disabled={!podeEditar}
               >
-                {(Object.keys(ROTULO_STATUS) as StatusItem[]).map((s) => (
+                {pendente && (
+                  <option value="pendente" disabled>
+                    {ROTULO_STATUS.pendente}
+                  </option>
+                )}
+                {opcoesStatus.map((s) => (
                   <option key={s} value={s}>
                     {ROTULO_STATUS[s]}
                   </option>
                 ))}
               </select>
-              <span className="field__hint">A cor do badge é derivada do status + prazos.</span>
+              <span className="field__hint">
+                {semPrevisto
+                  ? "Sem prazo previsto o item fica Pendente. Informe o previsto para ele entrar em andamento."
+                  : "A cor do badge é derivada do status + prazos."}
+              </span>
+            </label>
+
+            <label className="field">
+              <span className="field__label">Prioridade</span>
+              <select
+                className="input"
+                value={draft.prioridade}
+                onChange={set("prioridade")}
+                disabled={!podeEditar}
+              >
+                {PRIORIDADES.map((p) => (
+                  <option key={p} value={p}>
+                    {ROTULO_PRIORIDADE[p]}
+                  </option>
+                ))}
+              </select>
             </label>
 
             {emAnalise && (
@@ -453,20 +533,10 @@ function ItemDrawer({
             </label>
 
             <DateField label="Data de início" value={draft.dataInicio} onChange={set("dataInicio")} disabled={!podeEditar} />
-            <DateField label="Prazo previsto" value={draft.prazoPrevisto} onChange={set("prazoPrevisto")} disabled={!podeEditar} />
+            <DateField label="Prazo previsto" value={draft.prazoPrevisto} onChange={setPrazoPrevisto} disabled={!podeEditar} />
             <DateField label="Prazo reprogramado" value={draft.prazoReprogramado} onChange={set("prazoReprogramado")} disabled={!podeEditar} />
             <DateField label="Prazo realizado" value={draft.prazoRealizado} onChange={set("prazoRealizado")} disabled={!podeEditar} />
 
-            <label className="field">
-              <span className="field__label">Revisão atual</span>
-              <input
-                className="input mono"
-                value={draft.revisaoAtual}
-                onChange={set("revisaoAtual")}
-                disabled={!podeEditar}
-              />
-            </label>
-            <DateField label="Data da revisão" value={draft.dataRevisao} onChange={set("dataRevisao")} disabled={!podeEditar} />
           </div>
 
           <label className="field field--checkbox" style={{ marginTop: "14px" }}>
@@ -493,8 +563,16 @@ function ItemDrawer({
 
           <div className="drawer-derived">
             <div>
-              <div className="field__label">Meta</div>
-              <div className="mono">{item.metaDias ?? "—"}</div>
+              <div className="field__label">Revisão</div>
+              <div className="mono">
+                {item.revisaoAtual}
+                {item.dataRevisao ? ` · ${formatBR(item.dataRevisao)}` : ""}
+              </div>
+              {item.emRevisao && (
+                <div className="field__hint" style={{ marginTop: "2px" }}>
+                  Revisão em aberto — o número só avança no envio ao Autodoc.
+                </div>
+              )}
             </div>
             <div>
               <div className="field__label">Desvio</div>
@@ -509,6 +587,31 @@ function ItemDrawer({
               </div>
             </div>
           </div>
+
+          {revisoes && revisoes.length > 0 && (
+            <div className="drawer-history">
+              <div className="field__label" style={{ marginBottom: "10px" }}>
+                Histórico de revisões
+              </div>
+              {revisoes.map((r) => (
+                <div key={r.id} className="rev-row">
+                  <div className="rev-row__head">
+                    <span className="mono rev-row__num">{rotuloRevisao(r.numero)}</span>
+                    <span className={`badge badge--${r.realizadaEm ? "verde" : "ambar"}`}>
+                      <span className="badge__dot" />
+                      {r.realizadaEm ? "Entregue" : "Em aberto"}
+                    </span>
+                  </div>
+                  <div className="rev-row__solicitacao">{r.solicitacao}</div>
+                  <div className="rev-row__datas mono">
+                    Solicitada em {formatBR(r.solicitadaEm)} · Realizada em{" "}
+                    {formatBR(r.realizadaEm)}
+                    {r.projetistaNome ? ` · ${r.projetistaNome}` : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="drawer-history">
             <div className="field__label" style={{ marginBottom: "10px" }}>
@@ -550,6 +653,21 @@ function ItemDrawer({
             <button type="button" className="btn-danger" onClick={excluir} disabled={salvando}>
               Excluir
             </button>
+            <button
+              type="button"
+              className="btn-soft"
+              onClick={() => setModalRevisao(true)}
+              disabled={!podeRevisar || salvando}
+              title={
+                podeRevisar
+                  ? "Abrir uma nova revisão do item"
+                  : item.emRevisao
+                    ? "Já existe uma revisão em aberto neste item"
+                    : "Disponível apenas com o item Finalizado"
+              }
+            >
+              Nova revisão
+            </button>
             <div className="drawer-foot__right">
               {erro && <span className="drawer-foot__erro drawer-foot__erro--inline">{erro}</span>}
               <button type="button" className="btn-soft" onClick={onClose} disabled={salvando}>
@@ -562,6 +680,118 @@ function ItemDrawer({
           </div>
         )}
       </aside>
+
+      {modalRevisao && (
+        <NovaRevisaoModal
+          item={item}
+          projetista={projetistaDoItem}
+          onClose={() => setModalRevisao(false)}
+          onSalvo={() => {
+            setModalRevisao(false);
+            router.refresh();
+            // O item mudou por completo (datas zeradas, Autodoc desmarcado):
+            // fechar evita salvar por cima com um rascunho já obsoleto.
+            onClose();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Nova revisão
+ * ------------------------------------------------------------------ */
+
+/**
+ * Abre uma revisão de um item já finalizado. Além do texto da solicitação,
+ * mostra a quem ela vai — o projetista do item e o e-mail dele —, para o
+ * pedido não ser escrito sem se saber quem vai recebê-lo.
+ */
+function NovaRevisaoModal({
+  item,
+  projetista,
+  onClose,
+  onSalvo,
+}: {
+  item: ItemComRefs;
+  projetista: Projetista | null;
+  onClose: () => void;
+  onSalvo: () => void;
+}) {
+  const [solicitacao, setSolicitacao] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  function fechar() {
+    if (salvando) return;
+    onClose();
+  }
+
+  async function salvar() {
+    if (!solicitacao.trim()) {
+      setErro("Descreva a solicitação da revisão.");
+      return;
+    }
+    setSalvando(true);
+    setErro(null);
+    try {
+      await abrirRevisao(item.id, solicitacao);
+      onSalvo();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao abrir a revisão.");
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="modal-overlay" onClick={fechar} />
+      <div className="modal" role="dialog" aria-modal="true">
+        <div className="modal-head">
+          <h2 className="modal-title">Nova revisão</h2>
+          <button type="button" className="drawer-close" onClick={fechar} aria-label="Fechar">
+            ×
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <div className="rev-destinatario">
+            <div className="field__label">Projetista responsável</div>
+            <div className="rev-destinatario__nome">{projetista?.nome ?? "Sem projetista"}</div>
+            <div className="rev-destinatario__email mono">
+              {projetista?.email || "sem e-mail cadastrado"}
+            </div>
+          </div>
+
+          <label className="field" style={{ marginTop: "14px" }}>
+            <span className="field__label">Solicitação da revisão *</span>
+            <textarea
+              className="input"
+              rows={6}
+              value={solicitacao}
+              onChange={(e) => setSolicitacao(e.target.value)}
+              placeholder="Descreva o que precisa ser revisado no projeto…"
+              style={{ resize: "vertical" }}
+              autoFocus
+            />
+            <span className="field__hint">
+              O item volta para o início do ciclo: as datas são zeradas, a data
+              de início passa a ser hoje e o Autodoc é desmarcado.
+            </span>
+          </label>
+        </div>
+
+        <div className="modal-foot">
+          {erro && <span className="drawer-foot__erro">{erro}</span>}
+          <button type="button" className="btn-soft" onClick={fechar} disabled={salvando}>
+            Cancelar
+          </button>
+          <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>
+            {salvando ? "Abrindo…" : "Abrir revisão"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

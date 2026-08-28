@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProjetista } from "@/lib/actions/projetistas";
+import { formatTelefone } from "@/lib/ui/telefone";
 
 type Form = { nome: string; telefone: string; email: string };
 
@@ -32,8 +33,10 @@ export function ProjetistaFormModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const set = (campo: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [campo]: e.target.value }));
+  const set = (campo: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = campo === "telefone" ? formatTelefone(e.target.value) : e.target.value;
+    setForm((f) => ({ ...f, [campo]: valor }));
+  };
 
   return (
     <div>
@@ -54,7 +57,7 @@ export function ProjetistaFormModal({ onClose }: { onClose: () => void }) {
           <div className="form-grid" style={{ marginTop: "12px" }}>
             <label className="field">
               <span className="field__label">Telefone</span>
-              <input className="input mono" value={form.telefone} onChange={set("telefone")} placeholder="Ex.: (81) 99999-0000" />
+              <input className="input mono" value={form.telefone} onChange={set("telefone")} inputMode="tel" placeholder="Ex.: (81)99999-0000" />
             </label>
             <label className="field">
               <span className="field__label">E-mail</span>

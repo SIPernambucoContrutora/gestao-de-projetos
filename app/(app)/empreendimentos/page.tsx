@@ -60,8 +60,6 @@ function EmpreendimentoCard({ emp }: { emp: EmpreendimentoComProgresso }) {
       <div className="card-item__top">
         <div className="card-item__name">{emp.nome}</div>
       </div>
-      <div className="card-item__meta">{emp.responsavel ?? "Sem responsável"}</div>
-
       <div className="card-item__progress-row">
         <span>
           {emp.itensFinalizados}/{emp.totalItens} itens finalizados

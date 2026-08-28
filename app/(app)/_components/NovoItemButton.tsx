@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Disciplina, Etapa, Projetista, StatusItem } from "@/db/schema";
+import type { Disciplina, Etapa, PrioridadeItem, Projetista, StatusItem } from "@/db/schema";
 import { createItem } from "@/lib/actions/itens";
 import type { UsuarioBasico } from "@/lib/actions/usuarios";
-import { ROTULO_STATUS } from "@/lib/ui/status";
+import {
+  PRIORIDADES,
+  resolverStatus,
+  ROTULO_PRIORIDADE,
+  ROTULO_STATUS,
+  STATUS_SELECIONAVEIS,
+} from "@/lib/ui/status";
 
 const VAZIO = {
   disciplinaId: "",
@@ -13,15 +19,13 @@ const VAZIO = {
   projetistaId: "",
   planta: "",
   status: "pendente" as StatusItem,
+  prioridade: "media" as PrioridadeItem,
   usuarioAnaliseId: "",
   dataInicio: "",
   prazoPrevisto: "",
   prazoReprogramado: "",
   prazoRealizado: "",
-  metaDias: "",
   observacoes: "",
-  revisaoAtual: "R00",
-  dataRevisao: "",
 };
 
 export function NovoItemButton({
@@ -51,6 +55,24 @@ export function NovoItemButton({
   }
 
   const emAnalise = form.status === "em_analise";
+  // O par 'Pendente'/'Em andamento' é derivado do prazo previsto, nunca
+  // escolhido: sem previsto só 'Pendente' é possível e 'Em andamento' sai da
+  // lista. Encerrar o item ou mandar para análise segue liberado.
+  const semPrevisto = !form.prazoPrevisto;
+  const pendente = form.status === "pendente";
+  const opcoesStatus = semPrevisto
+    ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
+    : STATUS_SELECIONAVEIS;
+
+  // Mexer no prazo previsto reavalia o status na hora, nos dois sentidos.
+  function setPrazoPrevisto(e: React.ChangeEvent<HTMLInputElement>) {
+    const prazoPrevisto = e.target.value;
+    setForm((f) => ({
+      ...f,
+      prazoPrevisto,
+      status: resolverStatus(f.status, prazoPrevisto),
+    }));
+  }
 
   async function salvar() {
     if (!form.disciplinaId) return setErro("Selecione a disciplina.");
@@ -68,15 +90,13 @@ export function NovoItemButton({
         projetistaId: form.projetistaId || null,
         planta: form.planta || null,
         status: form.status,
+        prioridade: form.prioridade,
         usuarioAnaliseId: emAnalise ? form.usuarioAnaliseId : null,
         dataInicio: form.dataInicio || null,
         prazoPrevisto: form.prazoPrevisto || null,
         prazoReprogramado: form.prazoReprogramado || null,
         prazoRealizado: form.prazoRealizado || null,
-        metaDias: form.metaDias || null,
         observacoes: form.observacoes || null,
-        revisaoAtual: form.revisaoAtual || "R00",
-        dataRevisao: form.dataRevisao || null,
       });
       router.refresh();
       setSalvando(false);
@@ -147,9 +167,30 @@ export function NovoItemButton({
                 <label className="field">
                   <span className="field__label">Status</span>
                   <select className="input" value={form.status} onChange={set("status")}>
-                    {(Object.keys(ROTULO_STATUS) as StatusItem[]).map((s) => (
+                    {pendente && (
+                      <option value="pendente" disabled>
+                        {ROTULO_STATUS.pendente}
+                      </option>
+                    )}
+                    {opcoesStatus.map((s) => (
                       <option key={s} value={s}>
                         {ROTULO_STATUS[s]}
+                      </option>
+                    ))}
+                  </select>
+                  {semPrevisto && (
+                    <span className="field__hint">
+                      Sem prazo previsto o item fica Pendente. Informe o previsto para
+                      ele entrar em andamento.
+                    </span>
+                  )}
+                </label>
+                <label className="field">
+                  <span className="field__label">Prioridade</span>
+                  <select className="input" value={form.prioridade} onChange={set("prioridade")}>
+                    {PRIORIDADES.map((p) => (
+                      <option key={p} value={p}>
+                        {ROTULO_PRIORIDADE[p]}
                       </option>
                     ))}
                   </select>
@@ -181,7 +222,7 @@ export function NovoItemButton({
                 </label>
                 <label className="field">
                   <span className="field__label">Prazo previsto</span>
-                  <input type="date" className="input mono" value={form.prazoPrevisto} onChange={set("prazoPrevisto")} />
+                  <input type="date" className="input mono" value={form.prazoPrevisto} onChange={setPrazoPrevisto} />
                 </label>
                 <label className="field">
                   <span className="field__label">Prazo reprogramado</span>
@@ -190,18 +231,6 @@ export function NovoItemButton({
                 <label className="field">
                   <span className="field__label">Prazo realizado</span>
                   <input type="date" className="input mono" value={form.prazoRealizado} onChange={set("prazoRealizado")} />
-                </label>
-                <label className="field">
-                  <span className="field__label">Meta</span>
-                  <input className="input mono" value={form.metaDias} onChange={set("metaDias")} placeholder="ex.: D+30" />
-                </label>
-                <label className="field">
-                  <span className="field__label">Revisão atual</span>
-                  <input className="input mono" value={form.revisaoAtual} onChange={set("revisaoAtual")} />
-                </label>
-                <label className="field">
-                  <span className="field__label">Data da revisão</span>
-                  <input type="date" className="input mono" value={form.dataRevisao} onChange={set("dataRevisao")} />
                 </label>
               </div>
 

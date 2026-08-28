@@ -10,6 +10,7 @@ import {
   updateProjetista,
 } from "@/lib/actions/projetistas";
 import { derivarStatus, formatBR, parseISO } from "@/lib/ui/status";
+import { formatTelefone } from "@/lib/ui/telefone";
 import { DesvioBadge, StatusBadge } from "./StatusBadge";
 
 export function ProjetistasTable({
@@ -39,7 +40,7 @@ export function ProjetistasTable({
             {projetistas.map((p) => (
               <tr key={p.id} className="row-item" onClick={() => setAberto(p)}>
                 <td className="td-strong">{p.nome}</td>
-                <td className="mono td-muted">{p.telefone ?? "—"}</td>
+                <td className="mono td-muted">{p.telefone ? formatTelefone(p.telefone) : "—"}</td>
                 <td className="td-muted">{p.email ?? "—"}</td>
               </tr>
             ))}
@@ -80,7 +81,8 @@ function ProjetistaDrawer({
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => ({
     nome: projetista.nome,
-    telefone: projetista.telefone ?? "",
+    // Formata na abertura: registros antigos podem estar sem máscara.
+    telefone: formatTelefone(projetista.telefone ?? ""),
     email: projetista.email ?? "",
   }));
   const [salvando, setSalvando] = useState(false);
@@ -98,8 +100,10 @@ function ProjetistaDrawer({
     };
   }, [projetista.id]);
 
-  const set = (campo: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setDraft((d) => ({ ...d, [campo]: e.target.value }));
+  const set = (campo: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = campo === "telefone" ? formatTelefone(e.target.value) : e.target.value;
+    setDraft((d) => ({ ...d, [campo]: valor }));
+  };
 
   // Resumo agregado + linhas já com o desvio derivado.
   const { linhas, resumo } = useMemo(() => {
@@ -184,6 +188,8 @@ function ProjetistaDrawer({
                 className="input mono"
                 value={draft.telefone}
                 onChange={set("telefone")}
+                inputMode="tel"
+                placeholder="(81)99999-0000"
                 disabled={!podeEditar}
               />
             </label>

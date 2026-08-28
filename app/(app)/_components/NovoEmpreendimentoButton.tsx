@@ -9,16 +9,13 @@ export function NovoEmpreendimentoButton() {
   const [aberto, setAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    nome: "",
-    responsavel: "",
-  });
+  const [form, setForm] = useState({ nome: "" });
 
   function fechar() {
     if (salvando) return;
     setAberto(false);
     setErro(null);
-    setForm({ nome: "", responsavel: "" });
+    setForm({ nome: "" });
   }
 
   async function salvar() {
@@ -29,10 +26,7 @@ export function NovoEmpreendimentoButton() {
     setSalvando(true);
     setErro(null);
     try {
-      await createEmpreendimento({
-        nome: form.nome,
-        responsavel: form.responsavel || null,
-      });
+      await createEmpreendimento({ nome: form.nome });
       router.refresh();
       setSalvando(false);
       fechar();
@@ -71,15 +65,6 @@ export function NovoEmpreendimentoButton() {
                   onChange={set("nome")}
                   placeholder="Ex.: Aurora Prince"
                   autoFocus
-                />
-              </label>
-              <label className="field" style={{ marginTop: "12px" }}>
-                <span className="field__label">Responsável</span>
-                <input
-                  className="input"
-                  value={form.responsavel}
-                  onChange={set("responsavel")}
-                  placeholder="Ex.: Marina Duarte"
                 />
               </label>
             </div>

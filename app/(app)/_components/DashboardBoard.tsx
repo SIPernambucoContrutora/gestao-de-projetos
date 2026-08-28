@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ItemDashboard } from "@/lib/actions/itens";
 import type { StatusItem } from "@/db/schema";
 import { derivarStatus, formatBR, parseISO } from "@/lib/ui/status";
-import { AutodocBadge, DesvioBadge, StatusBadge } from "./StatusBadge";
+import { AutodocBadge, DesvioBadge, PrioridadeBadge, StatusBadge } from "./StatusBadge";
 
 type ChipKey = "all" | StatusItem | "atrasado";
 
@@ -100,14 +100,25 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
             <h1 className="page-head__title">Dashboard</h1>
             <p className="page-head__sub">Visão consolidada dos itens de projeto</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span className="dash-filtro-label">Empreendimento</span>
-            <select className="input" value={fEmp} onChange={(e) => setFEmp(e.target.value)} style={{ minWidth: "220px" }}>
-              <option value="all">Todos os empreendimentos</option>
-              {empOptions.map((e) => (
-                <option key={e.id} value={e.id}>{e.nome}</option>
-              ))}
-            </select>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span className="dash-filtro-label">Empreendimento</span>
+              <select className="input" value={fEmp} onChange={(e) => setFEmp(e.target.value)} style={{ minWidth: "220px" }}>
+                <option value="all">Todos os empreendimentos</option>
+                {empOptions.map((e) => (
+                  <option key={e.id} value={e.id}>{e.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span className="dash-filtro-label">Disciplina</span>
+              <select className="input" value={fDisc} onChange={(e) => setFDisc(e.target.value)} style={{ minWidth: "200px" }}>
+                <option value="all">Todas as disciplinas</option>
+                {discOptions.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nome}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -134,12 +145,6 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
             placeholder="Buscar planta, escopo, disciplina ou empreendimento…"
             style={{ width: "300px" }}
           />
-          <select className="input" value={fDisc} onChange={(e) => setFDisc(e.target.value)}>
-            <option value="all">Todas as disciplinas</option>
-            {discOptions.map((d) => (
-              <option key={d.id} value={d.id}>{d.nome}</option>
-            ))}
-          </select>
           <div className="chips">
             {CHIPS.map((c) => (
               <button
@@ -160,13 +165,14 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
           <table className="data-table" style={{ minWidth: "1800px" }}>
             <thead>
               <tr>
-                <th style={{ width: "44px" }}>#</th>
                 <th>Empreendimento</th>
                 <th>Disciplina</th>
                 <th>Etapa</th>
                 <th style={{ minWidth: "420px" }}>Planta / escopo</th>
                 <th>Projetista</th>
+                <th style={{ width: "72px" }}>Revisão</th>
                 <th>Status</th>
+                <th>Prioridade</th>
                 <th>Data início</th>
                 <th>Previsto</th>
                 <th>Reprog.</th>
@@ -178,7 +184,7 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
+                  <td colSpan={14} className="data-table__empty">Nenhum item corresponde aos filtros.</td>
                 </tr>
               ) : (
                 filtrados.map((it) => {
@@ -189,13 +195,14 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
                       className={`row-item${d.atrasado ? " row-item--atrasado" : ""}`}
                       onClick={() => router.push(`/empreendimentos/${it.empreendimentoId}`)}
                     >
-                      <td className="mono td-muted">{it.item != null ? String(it.item).padStart(2, "0") : "—"}</td>
                       <td className="td-muted">{it.empreendimentoNome}</td>
                       <td className="td-strong">{it.disciplinaNome}</td>
                       <td>{it.etapaNome}</td>
                       <td className="td-wide">{it.planta ?? "—"}</td>
                       <td className="td-muted">{it.projetistaNome ?? "—"}</td>
+                      <td className="mono td-muted">{it.revisaoAtual}</td>
                       <td><StatusBadge tom={d.tom} rotulo={d.rotulo} /></td>
+                      <td><PrioridadeBadge prioridade={it.prioridade} /></td>
                       <td className="mono td-muted">{formatBR(it.dataInicio)}</td>
                       <td className="mono td-muted">{formatBR(it.prazoPrevisto)}</td>
                       <td className="mono td-muted">{formatBR(it.prazoReprogramado)}</td>

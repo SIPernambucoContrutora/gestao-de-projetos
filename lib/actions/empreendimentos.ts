@@ -15,7 +15,6 @@ function toText(v: unknown): string | null {
 
 export type EmpreendimentoInput = {
   nome: string;
-  responsavel?: string | null;
 };
 
 export type EmpreendimentoComProgresso = Empreendimento & {
@@ -37,7 +36,6 @@ export async function listEmpreendimentos(): Promise<EmpreendimentoComProgresso[
     .select({
       id: empreendimentos.id,
       nome: empreendimentos.nome,
-      responsavel: empreendimentos.responsavel,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -79,7 +77,6 @@ export async function getEmpreendimento(
     .select({
       id: empreendimentos.id,
       nome: empreendimentos.nome,
-      responsavel: empreendimentos.responsavel,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -120,11 +117,7 @@ export async function createEmpreendimento(input: EmpreendimentoInput): Promise<
   const [inseridos] = await db.batch([
     db
       .insert(empreendimentos)
-      .values({
-        id: novoId,
-        nome,
-        responsavel: input.responsavel ?? null,
-      })
+      .values({ id: novoId, nome })
       .returning(),
     db.insert(historicoAlteracoes).values({
       empreendimentoId: novoId,
@@ -142,7 +135,6 @@ export async function createEmpreendimento(input: EmpreendimentoInput): Promise<
 // Campos editáveis + rótulo usado no histórico.
 const CAMPOS_EMP = {
   nome: "nome",
-  responsavel: "responsavel",
 } as const;
 type CampoEmp = keyof typeof CAMPOS_EMP;
 
@@ -159,8 +151,6 @@ export async function updateEmpreendimento(
     if (!nome) throw new Error("Nome do empreendimento não pode ser vazio.");
     novos.nome = nome;
   }
-  if (patch.responsavel !== undefined) novos.responsavel = patch.responsavel ?? null;
-
   if (Object.keys(novos).length === 0) throw new Error("Nada para atualizar.");
 
   const [atual] = await db

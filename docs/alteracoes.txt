@@ -1,0 +1,44 @@
+Status Pendente: 
+	- Apenas caso não haja previsto na hora do cadastro, a partir do cadastro e fique em andamento a partir disto sem ter como retornar para o status anterior
+
+
+Empreendimento: 
+	- tirar campo de usuário responsável.
+
+Itens de disciplina: 
+	- Adicionar um campo de Prioridade (Baixa, Média e Alta)
+	- Remover campo de revisão (escrita)
+	- Adicionar botão de revisão (por enquanto não fazer nada)
+	- Desvio "Em análise" ao invés de "finalizado". só fica "Finalizado" depois de enviar para o autodoc. (no histórico do projetista deve constar que finalizou a parte dele, já que essa análise é uma análise interna, ou seja, o trabalho dele já foi finalizado, o item que ainda não.)
+	- Remover campo "meta" da visão e do menu de cadastro.
+
+Revisão: 
+	- No cadastro da revisão:
+		- Terá um campo digitável: "Solicitação da revisão".
+		- Será possível ver visualmente: nome do Projetista responsável, e o e-mail dele.
+	- No Item do projeto:
+		- Terá um "histórico de revisões" em cima do "histórico do item" (que só aparece caso o item tenha ao menos uma Revisão solicitada), e nele será possível ver a data que as solicitações foram revisadas, data que foram realizadas (enviadas para o autodoc), e o que foi a Solicitação de revisão.
+		- Quando entrar em revisão, vai zerar os campos de data do item, preenchendo apenas a "Data Início" sendo a data de quando o usuário apertou no botão de nova revisão.
+		- Quando entrar em revisão, zerar o campo de Autodoc.
+		- Caso o item esteja em revisão, vai estar no status "Em andamento (Revisão)" mesmo enquanto estiver sem "Previsto" e o desvio vai ficar vazio caso não haja previsto. caso haja, vai mostrar como normalmente fica (X dias para o vencimento do prazo, Vence hoje...)
+		- O "Número da Revisão" será um campo escrito RXX, sendo XX a quantidade de *REVISÕES ENTREGUES AO AUTODOC*, ou seja, caso o item receba uma revisão, ele continuará com R00 e só apresentará R01 quando o usuário marcar que aquela revisão foi enviada ao autodoc.
+
+-----------------------------------------------
+
+
+
+E-mail: 
+	- No dia do vencimento do item, enviar um e-mail padrão para o Projetista responsável informando isso.
+	- A cada revisão enviar um e-mail para o projetista com o corpo do e-mail cadastrado na revisão. 
+	- e-mail será enviado para o projetista pelo e-mail do usuário logado, ativando o SMTP no e-mail 
+
+
+Dashboard:
+	- Filtro por disciplina encima junto do de empreendimentos
+	- Remoção da coluna ID
+	- Prioridade do Item (com cor)
+	- Incluir coluna do Número da Revisão antes da coluna de Status.
+
+
+Projetista: 
+	- Formatação da máscara do campo de telefone para (DDD)xxxxx-xxxx.

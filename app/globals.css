@@ -1135,3 +1135,50 @@ textarea.input {
   font-size: 13px;
   background: var(--panel-alt);
 }
+
+/* ------------------------------------------------------------------ *
+ * Revisões do item
+ * ------------------------------------------------------------------ */
+.rev-row {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--panel-head);
+  border: 1px solid #dfedef;
+  border-radius: 6px;
+}
+.rev-row__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rev-row__num {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.rev-row__solicitacao {
+  font-size: 12.5px;
+  color: var(--ink);
+  margin-top: 6px;
+  white-space: pre-wrap;
+}
+.rev-row__datas {
+  font-size: 11px;
+  color: #7ba3a8;
+  margin-top: 6px;
+}
+.rev-destinatario {
+  padding: 10px 12px;
+  background: var(--panel-head);
+  border: 1px solid #dfedef;
+  border-radius: 6px;
+}
+.rev-destinatario__nome {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 3px;
+}
+.rev-destinatario__email {
+  font-size: 11.5px;
+  color: #7ba3a8;
+  margin-top: 2px;
+}

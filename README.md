@@ -223,15 +223,35 @@ usuário": nome, e-mail, senha e papel) — o cadastro público fica bloqueado.
 
 Schema da aplicação (`db/schema.ts`), no schema `public`:
 
-- **`empreendimentos`** — `id`, `nome`, `responsavel`, `revisao_atual` (default
-  `R00`), `data_revisao`, `created_at`.
+- **`empreendimentos`** — `id`, `nome`, `created_at`.
 - **`disciplinas`** — `id`, `nome` (único). Ex.: Arquitetura, Estrutura, …
 - **`etapas`** — `id`, `nome` (único). Ex.: Estudo preliminar, Anteprojeto, …
 - **`itens_projeto`** — `id`, `empreendimento_id` (FK, `ON DELETE CASCADE`),
   `item` (nº), `disciplina_id`/`etapa_id` (FK, `RESTRICT`), `planta`, `status`
-  (enum `pendente|em_andamento|finalizado`, default `pendente`), `data_inicio`,
-  `prazo_previsto`, `prazo_reprogramado`, `prazo_realizado`, `meta_dias` (**text**,
-  ex. "D+30"), `observacoes`. Índices em cada FK e em `status`.
+  (enum `pendente|em_andamento|em_analise|finalizado|cancelado`, default
+  `pendente` — o par `pendente`/`em_andamento` é derivado e equivale à presença
+  de `prazo_previsto`, nos dois sentidos),
+  `prioridade` (enum `baixa|media|alta`, default `media` — escolha manual, não
+  derivada), `data_inicio`, `prazo_previsto`, `prazo_reprogramado`,
+  `prazo_realizado`, `observacoes`, `revisao_atual`/`data_revisao` (somente
+  leitura na interface — quem avança é o botão "Nova revisão", habilitado só com
+  o item finalizado; `revisao_atual` conta apenas as revisões **entregues**),
+  `em_revisao` (há uma revisão em aberto — ver `revisoes_item`),
+  `enviado_autodoc` (é o envio ao Autodoc que **fecha** o
+  item: antes dele o desvio nunca diz "Finalizado"), `meta_dias` (**text**,
+  ex. "D+30" — **legado**: fora da interface, mantido pelos dados já digitados).
+  Índices em cada FK, em `status`, em `prioridade` e em `em_revisao`.
+- **`revisoes_item`** — `id`, `item_id` (FK, `ON DELETE CASCADE`), `numero`
+  (ordinal dentro do item, exibido `R01`, `R02`…), `solicitacao` (o texto
+  mandado ao projetista), `projetista_id` (FK, `SET NULL`) +
+  `projetista_nome`/`projetista_email` **denormalizados** (a solicitação
+  registra a quem foi pedida naquela data), `usuario_id` (**text**),
+  `solicitada_em`, `realizada_em` (**nullable** — `NULL` = revisão em aberto),
+  `created_at`. Índice único `(item_id, numero)` e índice **parcial** único em
+  `item_id WHERE realizada_em IS NULL`, que garante no máximo **uma** revisão
+  aberta por item. Abrir uma revisão zera as datas do item, põe `data_inicio`
+  em hoje e desmarca `enviado_autodoc`; marcar o Autodoc de novo fecha a
+  revisão e é o único momento em que `revisao_atual` avança (R00 → R01 → …).
 - **`historico_alteracoes`** (auditoria **durável**) — `id`, `item_id` /
   `empreendimento_id` (**nullable**, FKs em **`ON DELETE SET NULL`**), `acao`
   (enum `criacao|edicao|exclusao`), `usuario_id` (**text**), `campo`
@@ -321,7 +341,11 @@ schema↔banco antes de virarem erro em runtime, é útil rodar `drizzle-kit`
 apontando para o banco.
 
 Ordem: `0000_init` → `0001_papel_historico` → `0002_meta_dias_text` →
-`0003_auditoria_ampla` → `0004_auditoria_duravel` → `seed_listas`.
+`0003_auditoria_ampla` → `0004_auditoria_duravel` →
+`0005_projetistas_revisao_item` → `0006_backfill_historico_nomes` →
+`0007_status_em_analise` → `0008_enviado_autodoc` → `0009_status_cancelado` →
+`0010_remove_responsavel_empreendimento` → `0011_pendente_sem_previsto` →
+`0012_prioridade_item` → `0013_revisoes_item` → `seed_listas`.
 
 ---
 

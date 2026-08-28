@@ -1,4 +1,5 @@
-import type { Tom } from "@/lib/ui/status";
+import type { PrioridadeItem } from "@/db/schema";
+import { ROTULO_PRIORIDADE, TOM_PRIORIDADE, type Tom } from "@/lib/ui/status";
 
 /** Badge de status. A classe de cor vem do tom já derivado. */
 export function StatusBadge({ tom, rotulo }: { tom: Tom; rotulo: string }) {
@@ -6,6 +7,16 @@ export function StatusBadge({ tom, rotulo }: { tom: Tom; rotulo: string }) {
     <span className={`badge badge--${tom}`}>
       <span className="badge__dot" />
       {rotulo}
+    </span>
+  );
+}
+
+/** Prioridade do item. O tom é fixo por valor (não depende de prazos). */
+export function PrioridadeBadge({ prioridade }: { prioridade: PrioridadeItem }) {
+  return (
+    <span className={`badge badge--${TOM_PRIORIDADE[prioridade]}`}>
+      <span className="badge__dot" />
+      {ROTULO_PRIORIDADE[prioridade]}
     </span>
   );
 }

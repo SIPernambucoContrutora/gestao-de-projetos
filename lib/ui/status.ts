@@ -1,4 +1,4 @@
-import type { StatusItem } from "@/db/schema";
+import type { PrioridadeItem, StatusItem } from "@/db/schema";
 
 /* ------------------------------------------------------------------ *
  * Derivação visual do status — porta a lógica `derive()` do protótipo.
@@ -15,6 +15,52 @@ export const ROTULO_STATUS: Record<StatusItem, string> = {
   finalizado: "Finalizado",
   cancelado: "Cancelado",
 };
+
+export const ROTULO_PRIORIDADE: Record<PrioridadeItem, string> = {
+  baixa: "Baixa",
+  media: "Média",
+  alta: "Alta",
+};
+
+/** Ordem de exibição do seletor de prioridade (da menor para a maior). */
+export const PRIORIDADES: PrioridadeItem[] = ["baixa", "media", "alta"];
+
+/** Tom do badge de prioridade — fixo por valor, não derivado de prazos. */
+export const TOM_PRIORIDADE: Record<PrioridadeItem, Tom> = {
+  baixa: "cinza",
+  media: "ambar",
+  alta: "vermelho",
+};
+
+/**
+ * Statuses que o usuário pode ESCOLHER num seletor. 'pendente' fica de fora:
+ * ele é derivado (ver resolverStatus) e nunca é uma escolha manual.
+ */
+export const STATUS_SELECIONAVEIS: StatusItem[] = [
+  "em_andamento",
+  "em_analise",
+  "finalizado",
+  "cancelado",
+];
+
+/**
+ * Resolve o status efetivo de um item. O par pendente/em_andamento não é
+ * escolhido: é uma EQUIVALÊNCIA com o prazo previsto.
+ *   · sem prazo previsto  ⇒ 'pendente'   (inclusive limpando o previsto depois)
+ *   · com prazo previsto  ⇒ 'em_andamento'
+ * 'em_analise', 'finalizado' e 'cancelado' seguem sendo escolhas explícitas —
+ * encerrar ou pôr em análise um item sem previsto continua possível.
+ *
+ * Função pura — roda no servidor (autoridade) e no cliente (para refletir a
+ * regra na hora, sem esperar o round-trip).
+ */
+export function resolverStatus(
+  desejado: StatusItem,
+  prazoPrevisto: string | null | undefined,
+): StatusItem {
+  if (desejado !== "pendente" && desejado !== "em_andamento") return desejado;
+  return prazoPrevisto ? "em_andamento" : "pendente";
+}
 
 /**
  * Prioridade de exibição por status (menor = mais acima nas listagens).
@@ -56,14 +102,41 @@ export const ROTULO_CAMPO_HISTORICO: Record<string, string> = {
   prazo_reprogramado: "prazo reprogramado",
   prazo_realizado: "prazo realizado",
   usuario_analise: "usuário da análise",
+  prioridade: "prioridade",
+  // Marco do projetista: gravado junto com a ida para 'em_analise'.
+  entrega_projetista: "entrega do projetista",
+  // LEGADO: a meta saiu da interface; o rótulo fica para o histórico antigo.
   meta_dias: "meta",
   observacoes: "observações",
   nome: "nome",
+  // Mantido só para o histórico antigo seguir legível: o campo 'responsavel'
+  // do empreendimento não existe mais.
   responsavel: "responsável",
   revisao_atual: "revisão atual",
   data_revisao: "data da revisão",
   enviado_autodoc: "enviado para o Autodoc",
+  // Marcos do fluxo de revisão (ver lib/actions/revisoes.ts).
+  revisao_solicitada: "revisão solicitada",
+  revisao_realizada: "revisão entregue",
+  // Gravado por scripts/copiar-historico-item.mjs quando um item é recriado
+  // e herda o passado do original.
+  historico_importado: "histórico importado",
 };
+
+/**
+ * Data de hoje em 'YYYY-MM-DD' no fuso de Pernambuco (America/Recife).
+ * Usada pelas Server Actions para carimbar datas do fluxo de revisão sem
+ * depender do TZ do servidor — em UTC, a virada do dia acontece 3h antes.
+ */
+export function hojeISORecife(): string {
+  // 'en-CA' formata como YYYY-MM-DD, que é exatamente o formato de `date`.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Recife" }).format(new Date());
+}
+
+/** Formata o número de uma revisão (1 → "R01"). */
+export function rotuloRevisao(numero: number): string {
+  return `R${String(numero).padStart(2, "0")}`;
+}
 
 export function rotuloCampo(campo: string | null | undefined): string {
   if (!campo) return "";
@@ -116,6 +189,12 @@ export type ItemDatas = {
   prazoRealizado?: string | null;
   // Nome de quem conduz a análise — usado no rótulo "Em análise por X".
   usuarioAnaliseNome?: string | null;
+  // O envio para o Autodoc é o que FECHA o item: só depois dele o desvio
+  // pode dizer "Finalizado" (ver derivarStatus).
+  enviadoAutodoc?: boolean | null;
+  // Há uma revisão EM ABERTO: o item voltou para a equipe depois de já ter
+  // sido finalizado. Muda só o rótulo — o desvio segue a regra normal.
+  emRevisao?: boolean | null;
 };
 
 export type StatusDerivado = {
@@ -169,11 +248,33 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
     rotulo = `Em análise por ${it.usuarioAnaliseNome}`;
   }
 
+  // Item com revisão EM ABERTO. Ao abrir a revisão os prazos são zerados,
+  // então ele volta a 'pendente' — mas "Pendente" esconderia o fato de que
+  // há trabalho em curso com o projetista. Aqui o par pendente/em andamento
+  // deixa de valer: em revisão é sempre "Em andamento (Revisão)", mesmo sem
+  // previsto. Estourar o prazo (quando já houver um) segue virando
+  // "Atrasado", só que sem perder a marca de revisão.
+  if (it.emRevisao && (it.status === "pendente" || it.status === "em_andamento")) {
+    if (rotulo === "Atrasado") {
+      rotulo = "Atrasado (Revisão)";
+    } else {
+      rotulo = "Em andamento (Revisão)";
+      tom = "ambar";
+    }
+  }
+
   // Desvio: texto explícito + tom próprio.
   // O finalizado é medido contra o prazo PREVISTO (o original), não contra o
   // reprogramado — entregar na data reprogramada continua sendo atraso.
-  //  · finalizado até o previsto  → verde  ("Finalizado no prazo")
-  //  · finalizado após o previsto → âmbar  ("Finalizado com atraso de N dias")
+  //
+  // Quem FECHA o item é o envio para o Autodoc, não a entrega do projetista:
+  //  · em análise                       → azul   ("Em análise") — a análise é
+  //    interna da equipe; o projetista já terminou a parte dele (fica no
+  //    histórico), mas o item ainda não está finalizado;
+  //  · fechado (Autodoc) até o previsto  → verde  ("Finalizado no prazo")
+  //  · fechado (Autodoc) após o previsto → âmbar  ("Finalizado com atraso de N dias")
+  //  · entregue/finalizado mas ainda fora do Autodoc
+  //                               → cinza  ("Aguardando Autodoc")
   //  · em aberto, alvo no futuro  → cinza  ("N dias para o vencimento do prazo"),
   //    mas VERMELHO se houve reprogramação — o prazo original já estourou.
   //  · em aberto, previsto vencido e AINDA sem reprogramação
@@ -185,17 +286,34 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
   let desvioTom: Tom = "cinza";
   // Base do desvio de entrega: o previsto original (cai no alvo se não houver).
   const baseEntrega = parseISO(it.prazoPrevisto) ?? alvo;
-  if (real && baseEntrega) {
-    const d = diffDias(real, baseEntrega);
-    if (d > 0) {
-      // Âmbar, não vermelho: já foi entregue — é atenção, não pendência.
-      desvio = textoAtraso(d, "Finalizado com ");
-      desvioTom = "ambar";
+  // Marcar o Autodoc num item ainda em andamento não o encerra: o fechamento
+  // exige o item finalizado (ou com prazo realizado) E enviado.
+  const fechado = !!it.enviadoAutodoc && (it.status === "finalizado" || !!real);
+  if (it.status === "em_analise") {
+    desvio = "Em análise";
+    desvioTom = "azul";
+  } else if (fechado) {
+    if (real && baseEntrega) {
+      const d = diffDias(real, baseEntrega);
+      if (d > 0) {
+        // Âmbar, não vermelho: já foi entregue — é atenção, não pendência.
+        desvio = textoAtraso(d, "Finalizado com ");
+        desvioTom = "ambar";
+      } else {
+        desvio = "Finalizado no prazo";
+        desvioTom = "verde";
+      }
     } else {
-      desvio = "Finalizado no prazo";
+      // Enviado e finalizado, mas sem data de entrega para medir o desvio.
+      desvio = "Finalizado";
       desvioTom = "verde";
     }
-  } else if (alvo && it.status !== "finalizado" && it.status !== "cancelado") {
+  } else if ((it.status === "finalizado" || real) && it.status !== "cancelado") {
+    desvio = "Aguardando Autodoc";
+    desvioTom = "cinza";
+  } else if (alvo && it.status !== "cancelado") {
+    // Item em aberto (os ramos acima já cobriram análise, fechado e
+    // finalizado à espera do Autodoc).
     const d = diffDias(hoje, alvo);
     if (d > 0) {
       desvio = reprogramado ? `Atraso de ${d} ${d === 1 ? "dia" : "dias"}` : "Necessário reprogramar";

@@ -84,7 +84,6 @@ export default async function EmpreendimentoDetalhePage({
           <div style={{ minWidth: 0 }}>
             <h1 className="page-head__title">{emp.nome}</h1>
             <div className="detail-head__meta">
-              <Campo rotulo="Responsável" valor={emp.responsavel ?? "—"} />
               <Campo rotulo="Itens" valor={String(emp.totalItens)} mono />
             </div>
           </div>
