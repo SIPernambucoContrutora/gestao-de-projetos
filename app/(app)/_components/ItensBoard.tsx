@@ -40,7 +40,6 @@ const CHIPS: { key: ChipKey; label: string }[] = [
   { key: "em_andamento", label: "Em andamento" },
   { key: "atrasado", label: "Atrasados" },
   { key: "pendente", label: "Pendentes" },
-  { key: "cancelado", label: "Cancelados" },
 ];
 
 export function ItensBoard({
@@ -155,7 +154,6 @@ export function ItensBoard({
             disciplinas={disciplinas}
             etapas={etapas}
             projetistas={projetistas}
-            usuarios={usuarios}
           />
         )}
       </div>
@@ -330,21 +328,15 @@ function ItemDrawer({
   // projetista ainda não salva no rascunho não vale aqui).
   const projetistaDoItem = projetistas.find((p) => p.id === item.projetistaId) ?? null;
 
-  // O par 'Pendente'/'Em andamento' é derivado do prazo previsto, nunca
-  // escolhido: sem previsto só 'Pendente' é possível (aparece como opção
-  // desabilitada) e 'Em andamento' sai da lista. Encerrar o item ou mandar
-  // para análise segue liberado nos dois casos.
+  // O status é derivado das datas; a ÚNICA escolha manual é 'Em análise', e
+  // só a partir de 'Em andamento' (ou seja: com previsto e sem realizado).
+  // Nos outros casos o valor vigente aparece como opção desabilitada, e o
+  // hint diz que data mexer para sair dali.
   const semPrevisto = !draft.prazoPrevisto;
   const pendente = draft.status === "pendente";
-  // Com prazo realizado o item está finalizado e nenhum outro status pega —
-  // exceto cancelar, que tem precedência. Deixar as demais opções na lista
-  // só produziria escolhas silenciosamente revertidas por resolverStatus.
   const finalizado = draft.status === "finalizado";
-  const opcoesStatus = finalizado
-    ? STATUS_SELECIONAVEIS.filter((s) => s === "cancelado")
-    : semPrevisto
-      ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
-      : STATUS_SELECIONAVEIS;
+  const statusTravado = pendente || finalizado;
+  const opcoesStatus = statusTravado ? [] : STATUS_SELECIONAVEIS;
 
   // Mexer no prazo previsto reavalia o status na hora, nos dois sentidos:
   // preencher tira de pendente, limpar devolve para pendente.
@@ -460,7 +452,7 @@ function ItemDrawer({
                 className="input"
                 value={draft.status}
                 onChange={set("status")}
-                disabled={!podeEditar}
+                disabled={!podeEditar || statusTravado}
               >
                 {pendente && (
                   <option value="pendente" disabled>
@@ -483,7 +475,7 @@ function ItemDrawer({
                   ? "Finalizado pelo prazo realizado. Limpe a data do realizado para reabrir o item."
                   : semPrevisto
                     ? "Sem prazo previsto o item fica Pendente. Informe o previsto para ele entrar em andamento."
-                    : "A cor do badge é derivada do status + prazos."}
+                    : "Em análise é a única escolha manual — o resto do status vem das datas."}
               </span>
             </label>
 

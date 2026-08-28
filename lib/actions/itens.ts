@@ -92,7 +92,7 @@ export type ItemDashboard = ItemComRefs & {
 
 // Ordem de trabalho das listagens:
 //  1) status — pendente no topo (é o que precisa ser programado), em
-//     andamento e em análise no meio, finalizado e cancelado por último;
+//     andamento e em análise no meio, finalizado por último;
 //  2) dentro do grupo, a data-alvo mais próxima primeiro (reprogramado tem
 //     precedência sobre previsto); itens sem nenhuma data ficam ao final.
 // O CASE espelha ORDEM_STATUS em lib/ui/status.ts.
@@ -103,8 +103,7 @@ const ORDEM_STATUS_SQL = sql`case ${itensProjeto.status}
   when 'em_andamento' then 1
   when 'em_analise' then 2
   when 'finalizado' then 3
-  when 'cancelado' then 4
-  else 5 end asc`;
+  else 4 end asc`;
 
 const ORDEM_DATA_ALVO = sql`coalesce(${itensProjeto.prazoReprogramado}, ${itensProjeto.prazoPrevisto}) asc nulls last`;
 

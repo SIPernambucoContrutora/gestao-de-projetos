@@ -16,20 +16,21 @@ import {
  * Enums
  * ------------------------------------------------------------------ */
 
-// Ciclo de vida do item. A cor no frontend é DERIVADA automaticamente do
-// valor (não é mais escolhida livremente). O par 'pendente'/'em_andamento'
-// também é derivado, e equivale à presença de prazo_previsto: sem previsto o
-// item é 'pendente', com previsto é 'em_andamento' (ver resolverStatus em
-// lib/ui/status.ts). Nunca é escolhido à mão.
-// 'em_analise' é a etapa entre o projetista concluir e a equipe validar —
-// exige usuario_analise_id.
-// 'cancelado' encerra o item sem entrega — sai do fluxo de prazos.
+// Ciclo de vida do item. NENHUM destes valores é digitado num campo "status":
+// todos são DERIVADOS das datas por resolverStatus (lib/ui/status.ts) —
+//   sem prazo_previsto        → 'pendente'
+//   com prazo_previsto        → 'em_andamento'
+//   com prazo_realizado       → 'finalizado'
+// 'em_analise' é a única escolha manual (no drawer, a partir de em_andamento):
+// é a etapa entre o projetista concluir e a equipe validar, e exige
+// usuario_analise_id.
+// "Atrasado" NÃO é um valor aqui: é derivação visual do prazo vigente contra
+// hoje, então reprogramar para o futuro tira o item do vermelho sozinho.
 export const statusItemEnum = pgEnum("status_item", [
   "pendente",
   "em_andamento",
   "em_analise",
   "finalizado",
-  "cancelado",
 ]);
 
 // Papéis de acesso. O papel é atributo da APLICAÇÃO (tabela usuarios_papel),

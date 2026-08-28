@@ -13,7 +13,6 @@ export const ROTULO_STATUS: Record<StatusItem, string> = {
   em_andamento: "Em andamento",
   em_analise: "Em análise",
   finalizado: "Finalizado",
-  cancelado: "Cancelado",
 };
 
 export const ROTULO_PRIORIDADE: Record<PrioridadeItem, string> = {
@@ -33,32 +32,28 @@ export const TOM_PRIORIDADE: Record<PrioridadeItem, Tom> = {
 };
 
 /**
- * Statuses que o usuário pode ESCOLHER num seletor. Ficam de fora os dois
- * que são DERIVADOS de datas e nunca uma escolha manual (ver resolverStatus):
- * 'pendente' (ausência de prazo previsto) e 'finalizado' (prazo realizado).
+ * O ÚNICO status que o usuário escolhe, e só no drawer de um item já em
+ * andamento (ver resolverStatus). Todo o resto é derivado das datas — o
+ * formulário de novo item nem tem campo de status.
  */
-export const STATUS_SELECIONAVEIS: StatusItem[] = [
-  "em_andamento",
-  "em_analise",
-  "cancelado",
-];
+export const STATUS_SELECIONAVEIS: StatusItem[] = ["em_andamento", "em_analise"];
 
 /**
- * Resolve o status efetivo de um item. Dois status não são escolhidos: são
- * EQUIVALÊNCIAS com datas, válidas nos dois sentidos.
+ * Resolve o status efetivo de um item. O status NÃO é um campo: é uma leitura
+ * das datas, com uma única escolha manual no meio ('em_analise').
  *
- *   prazo REALIZADO (tem precedência — é o fim da linha):
- *     · preenchido ⇒ 'finalizado', venha o item de onde vier (pendente,
- *       em andamento ou em análise);
- *     · limpo      ⇒ o item volta ao par pendente/em_andamento abaixo.
+ *   1. prazo REALIZADO preenchido ⇒ 'finalizado'  (tem precedência: é o fim
+ *      da linha). Limpar a data reabre o item pelas regras abaixo.
+ *   2. sem prazo PREVISTO         ⇒ 'pendente'    (nada foi programado ainda)
+ *   3. com prazo previsto         ⇒ 'em_andamento'
  *
- *   prazo PREVISTO (só vale sem realizado):
- *     · sem previsto ⇒ 'pendente'   (inclusive limpando o previsto depois)
- *     · com previsto ⇒ 'em_andamento'
+ * 'em_analise' é a única escolha manual e só existe a partir de 'em_andamento'
+ * — ou seja, exige prazo previsto e nenhum realizado. Limpar o previsto de um
+ * item em análise devolve ele para 'pendente'.
  *
- * 'em_analise' e 'cancelado' seguem sendo escolhas explícitas: pôr em análise
- * um item sem previsto continua possível, e cancelar tem precedência sobre
- * tudo — um item que não será entregue não é finalizado por uma data.
+ * "Atrasado" não aparece aqui: não é um status gravado, é derivação visual do
+ * prazo vigente contra hoje (ver derivarStatus). Reprogramar para uma data
+ * futura tira o item do vermelho sem mudar o status gravado.
  *
  * Função pura — roda no servidor (autoridade) e no cliente (para refletir a
  * regra na hora, sem esperar o round-trip).
@@ -68,12 +63,9 @@ export function resolverStatus(
   prazoPrevisto: string | null | undefined,
   prazoRealizado?: string | null,
 ): StatusItem {
-  if (desejado === "cancelado") return "cancelado";
   if (prazoRealizado) return "finalizado";
-  // Sem realizado, 'finalizado' não se sustenta: cai de volta no par derivado
-  // do previsto (é assim que se desfaz uma data preenchida por engano).
-  if (desejado === "em_analise") return "em_analise";
-  return prazoPrevisto ? "em_andamento" : "pendente";
+  if (!prazoPrevisto) return "pendente";
+  return desejado === "em_analise" ? "em_analise" : "em_andamento";
 }
 
 /**
@@ -86,7 +78,6 @@ export const ORDEM_STATUS: Record<StatusItem, number> = {
   em_andamento: 1,
   em_analise: 2,
   finalizado: 3,
-  cancelado: 4,
 };
 
 /**
@@ -241,10 +232,6 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
 
   if (it.status === "finalizado") {
     tom = "verde";
-  } else if (it.status === "cancelado") {
-    // Cancelado sai do fluxo de prazos: vermelho, mas nunca conta como
-    // atrasado — não há o que reprogramar num item que não será entregue.
-    tom = "vermelho";
   } else if (it.status === "em_analise") {
     // Em análise tem cor e filtro próprios — não vira "Atrasado" mesmo com
     // o prazo vencido, já que o item está com o analista, não parado.
@@ -329,10 +316,10 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
       desvio = "Finalizado";
       desvioTom = "verde";
     }
-  } else if ((it.status === "finalizado" || real) && it.status !== "cancelado") {
+  } else if (it.status === "finalizado" || real) {
     desvio = "Aguardando Autodoc";
     desvioTom = "cinza";
-  } else if (alvo && it.status !== "cancelado") {
+  } else if (alvo) {
     // Item em aberto (os ramos acima já cobriram análise, fechado e
     // finalizado à espera do Autodoc).
     const d = diffDias(hoje, alvo);
@@ -345,6 +332,6 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
     }
   }
 
-  const atrasado = tom === "vermelho" && it.status !== "cancelado";
+  const atrasado = tom === "vermelho";
   return { tom, rotulo, atrasado, desvio, desvioTom };
 }

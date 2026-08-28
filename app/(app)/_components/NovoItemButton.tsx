@@ -2,25 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Disciplina, Etapa, PrioridadeItem, Projetista, StatusItem } from "@/db/schema";
+import type { Disciplina, Etapa, PrioridadeItem, Projetista } from "@/db/schema";
 import { createItem } from "@/lib/actions/itens";
-import type { UsuarioBasico } from "@/lib/actions/usuarios";
-import {
-  PRIORIDADES,
-  resolverStatus,
-  ROTULO_PRIORIDADE,
-  ROTULO_STATUS,
-  STATUS_SELECIONAVEIS,
-} from "@/lib/ui/status";
+import { PRIORIDADES, ROTULO_PRIORIDADE, ROTULO_STATUS, resolverStatus } from "@/lib/ui/status";
 
 const VAZIO = {
   disciplinaId: "",
   etapaId: "",
   projetistaId: "",
   planta: "",
-  status: "pendente" as StatusItem,
   prioridade: "media" as PrioridadeItem,
-  usuarioAnaliseId: "",
   dataInicio: "",
   prazoPrevisto: "",
   prazoReprogramado: "",
@@ -33,13 +24,11 @@ export function NovoItemButton({
   disciplinas,
   etapas,
   projetistas,
-  usuarios,
 }: {
   empreendimentoId: string;
   disciplinas: Disciplina[];
   etapas: Etapa[];
   projetistas: Projetista[];
-  usuarios: UsuarioBasico[];
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -54,47 +43,18 @@ export function NovoItemButton({
     setForm({ ...VAZIO });
   }
 
-  const emAnalise = form.status === "em_analise";
-  // O par 'Pendente'/'Em andamento' é derivado do prazo previsto, nunca
-  // escolhido: sem previsto só 'Pendente' é possível e 'Em andamento' sai da
-  // lista. Encerrar o item ou mandar para análise segue liberado.
-  const semPrevisto = !form.prazoPrevisto;
-  const pendente = form.status === "pendente";
-  // Com prazo realizado o item já nasce finalizado; só cancelar tem
-  // precedência sobre isso (ver resolverStatus).
-  const finalizado = form.status === "finalizado";
-  const opcoesStatus = finalizado
-    ? STATUS_SELECIONAVEIS.filter((s) => s === "cancelado")
-    : semPrevisto
-      ? STATUS_SELECIONAVEIS.filter((s) => s !== "em_andamento")
-      : STATUS_SELECIONAVEIS;
-
-  // Mexer no prazo previsto reavalia o status na hora, nos dois sentidos.
-  function setPrazoPrevisto(e: React.ChangeEvent<HTMLInputElement>) {
-    const prazoPrevisto = e.target.value;
-    setForm((f) => ({
-      ...f,
-      prazoPrevisto,
-      status: resolverStatus(f.status, prazoPrevisto, f.prazoRealizado || null),
-    }));
-  }
-
-  // Idem para o realizado: preencher finaliza, limpar reabre.
-  function setPrazoRealizado(e: React.ChangeEvent<HTMLInputElement>) {
-    const prazoRealizado = e.target.value;
-    setForm((f) => ({
-      ...f,
-      prazoRealizado,
-      status: resolverStatus(f.status, f.prazoPrevisto || null, prazoRealizado || null),
-    }));
-  }
+  // Não existe campo de status neste formulário: o item nasce com o status
+  // que as datas ditarem. Isto aqui é só a PRÉVIA do que o servidor vai
+  // gravar — 'em_analise' nunca sai daqui, ele só existe no drawer.
+  const statusPrevisto = resolverStatus(
+    "em_andamento",
+    form.prazoPrevisto || null,
+    form.prazoRealizado || null,
+  );
 
   async function salvar() {
     if (!form.disciplinaId) return setErro("Selecione a disciplina.");
     if (!form.etapaId) return setErro("Selecione a etapa.");
-    if (emAnalise && !form.usuarioAnaliseId) {
-      return setErro("Selecione o usuário da análise para salvar o status Em análise.");
-    }
     setSalvando(true);
     setErro(null);
     try {
@@ -104,9 +64,9 @@ export function NovoItemButton({
         etapaId: form.etapaId,
         projetistaId: form.projetistaId || null,
         planta: form.planta || null,
-        status: form.status,
+        // Sem 'status' nem 'usuarioAnaliseId': o servidor deriva o status das
+        // datas (resolverStatus), e análise só se escolhe no drawer.
         prioridade: form.prioridade,
-        usuarioAnaliseId: emAnalise ? form.usuarioAnaliseId : null,
         dataInicio: form.dataInicio || null,
         prazoPrevisto: form.prazoPrevisto || null,
         prazoReprogramado: form.prazoReprogramado || null,
@@ -180,37 +140,6 @@ export function NovoItemButton({
                   </select>
                 </label>
                 <label className="field">
-                  <span className="field__label">Status</span>
-                  <select className="input" value={form.status} onChange={set("status")}>
-                    {pendente && (
-                      <option value="pendente" disabled>
-                        {ROTULO_STATUS.pendente}
-                      </option>
-                    )}
-                    {finalizado && (
-                      <option value="finalizado" disabled>
-                        {ROTULO_STATUS.finalizado}
-                      </option>
-                    )}
-                    {opcoesStatus.map((s) => (
-                      <option key={s} value={s}>
-                        {ROTULO_STATUS[s]}
-                      </option>
-                    ))}
-                  </select>
-                  {finalizado ? (
-                    <span className="field__hint">
-                      Com prazo realizado o item já nasce Finalizado. Limpe a data para
-                      escolher outro status.
-                    </span>
-                  ) : semPrevisto ? (
-                    <span className="field__hint">
-                      Sem prazo previsto o item fica Pendente. Informe o previsto para
-                      ele entrar em andamento.
-                    </span>
-                  ) : null}
-                </label>
-                <label className="field">
                   <span className="field__label">Prioridade</span>
                   <select className="input" value={form.prioridade} onChange={set("prioridade")}>
                     {PRIORIDADES.map((p) => (
@@ -220,19 +149,6 @@ export function NovoItemButton({
                     ))}
                   </select>
                 </label>
-                {emAnalise && (
-                  <label className="field">
-                    <span className="field__label">Usuário da análise *</span>
-                    <select className="input" value={form.usuarioAnaliseId} onChange={set("usuarioAnaliseId")}>
-                      <option value="">Selecione…</option>
-                      {usuarios.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
               </div>
 
               <label className="field" style={{ marginTop: "12px" }}>
@@ -247,7 +163,7 @@ export function NovoItemButton({
                 </label>
                 <label className="field">
                   <span className="field__label">Prazo previsto</span>
-                  <input type="date" className="input mono" value={form.prazoPrevisto} onChange={setPrazoPrevisto} />
+                  <input type="date" className="input mono" value={form.prazoPrevisto} onChange={set("prazoPrevisto")} />
                 </label>
                 <label className="field">
                   <span className="field__label">Prazo reprogramado</span>
@@ -255,9 +171,19 @@ export function NovoItemButton({
                 </label>
                 <label className="field">
                   <span className="field__label">Prazo realizado</span>
-                  <input type="date" className="input mono" value={form.prazoRealizado} onChange={setPrazoRealizado} />
+                  <input type="date" className="input mono" value={form.prazoRealizado} onChange={set("prazoRealizado")} />
                 </label>
               </div>
+
+              {/* O status não é escolhido — é lido das datas acima. Mostrar o
+                  resultado evita a surpresa de criar o item e só então ver
+                  em que status ele caiu. */}
+              <span className="field__hint" style={{ marginTop: "8px", display: "block" }}>
+                Status: <strong>{ROTULO_STATUS[statusPrevisto]}</strong> — derivado das datas.
+                {statusPrevisto === "pendente" && " Informe o prazo previsto para o item entrar em andamento."}
+                {statusPrevisto === "em_andamento" && " Preencha o prazo realizado quando ele for entregue."}
+                {statusPrevisto === "finalizado" && " O prazo realizado finaliza o item."}
+              </span>
 
               <label className="field" style={{ marginTop: "12px" }}>
                 <span className="field__label">Observações</span>
