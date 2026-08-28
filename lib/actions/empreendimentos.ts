@@ -21,7 +21,7 @@ export type EmpreendimentoComProgresso = Empreendimento & {
   totalItens: number;
   itensFinalizados: number;
   itensEmAndamento: number; // em andamento e dentro do prazo
-  itensAtrasados: number; // não finalizado e com prazo vencido
+  itensAtrasados: number; // não entregue (sem prazo realizado) e com prazo vencido
   progresso: number; // 0..100
 };
 
@@ -41,10 +41,11 @@ export async function listEmpreendimentos(): Promise<EmpreendimentoComProgresso[
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
         Number,
       ),
-      // "Atrasado" = não finalizado e com o prazo vigente (reprogramado, ou
+      // "Atrasado" = ainda NÃO entregue e com o prazo vigente (reprogramado, ou
       // previsto) já vencido. Mesma regra do derivarStatus() do frontend.
       itensAtrasados: sql<number>`count(*) filter (
         where ${itensProjeto.status} <> 'finalizado'
+          and ${itensProjeto.prazoRealizado} is null
           and coalesce(${itensProjeto.prazoReprogramado}, ${itensProjeto.prazoPrevisto}) < current_date
       )`.mapWith(Number),
       // "Em andamento" que ainda não estourou o prazo (atraso tem precedência).
@@ -84,6 +85,7 @@ export async function getEmpreendimento(
       ),
       itensAtrasados: sql<number>`count(*) filter (
         where ${itensProjeto.status} <> 'finalizado'
+          and ${itensProjeto.prazoRealizado} is null
           and coalesce(${itensProjeto.prazoReprogramado}, ${itensProjeto.prazoPrevisto}) < current_date
       )`.mapWith(Number),
       itensEmAndamento: sql<number>`count(*) filter (

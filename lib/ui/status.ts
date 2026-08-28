@@ -235,6 +235,13 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
     // Em análise tem cor e filtro próprios — não vira "Atrasado" mesmo com
     // o prazo vencido, já que o item está com o analista, não parado.
     tom = "azul";
+  } else if (real) {
+    // Já ENTREGUE: com prazo realizado preenchido o item está concluído,
+    // mesmo que o status não tenha sido movido para 'finalizado' na mão.
+    // "Atrasado" é só para o que ainda NÃO foi feito — a entrega fora do
+    // prazo é reportada no desvio ("Finalizado com atraso de N dias").
+    tom = "verde";
+    rotulo = ROTULO_STATUS.finalizado;
   } else if (alvo && alvo < hoje) {
     tom = "vermelho";
     rotulo = "Atrasado";

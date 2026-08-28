@@ -17,3 +17,6 @@ next-env.d.ts
 # OS / editor cruft
 Thumbs.db
 .DS_Store
+
+#Meets
+docs\alteracoes.txt

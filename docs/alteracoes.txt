@@ -23,16 +23,6 @@ Revisão:
 		- Caso o item esteja em revisão, vai estar no status "Em andamento (Revisão)" mesmo enquanto estiver sem "Previsto" e o desvio vai ficar vazio caso não haja previsto. caso haja, vai mostrar como normalmente fica (X dias para o vencimento do prazo, Vence hoje...)
 		- O "Número da Revisão" será um campo escrito RXX, sendo XX a quantidade de *REVISÕES ENTREGUES AO AUTODOC*, ou seja, caso o item receba uma revisão, ele continuará com R00 e só apresentará R01 quando o usuário marcar que aquela revisão foi enviada ao autodoc.
 
------------------------------------------------
-
-
-
-E-mail: 
-	- No dia do vencimento do item, enviar um e-mail padrão para o Projetista responsável informando isso.
-	- A cada revisão enviar um e-mail para o projetista com o corpo do e-mail cadastrado na revisão. 
-	- e-mail será enviado para o projetista pelo e-mail do usuário logado, ativando o SMTP no e-mail 
-
-
 Dashboard:
 	- Filtro por disciplina encima junto do de empreendimentos
 	- Remoção da coluna ID
@@ -42,3 +32,12 @@ Dashboard:
 
 Projetista: 
 	- Formatação da máscara do campo de telefone para (DDD)xxxxx-xxxx.
+-----------------------------------------------
+
+
+
+E-mail: 
+	- No dia do vencimento do item, enviar um e-mail padrão para o Projetista responsável informando isso.
+	- A cada revisão enviar um e-mail para o projetista com o corpo do e-mail cadastrado na revisão. 
+	- e-mail será enviado para o projetista pelo e-mail do usuário logado, ativando o SMTP no e-mail 
+
