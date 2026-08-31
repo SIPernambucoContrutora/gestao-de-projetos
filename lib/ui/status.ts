@@ -335,3 +335,85 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
   const atrasado = tom === "vermelho";
   return { tom, rotulo, atrasado, desvio, desvioTom };
 }
+
+/* ------------------------------------------------------------------ *
+ * Ótica do PROJETISTA
+ *
+ * O ciclo do item e o ciclo do projetista terminam em momentos diferentes.
+ * Quando o item vai para 'em_analise', o projetista JÁ MANDOU o projeto para
+ * a nossa equipe de arquitetura — a análise que vem depois é interna. Então,
+ * para ele, aquilo está FINALIZADO, mesmo com o item ainda aberto (o item só
+ * fecha de fato no envio ao Autodoc).
+ *
+ * Este é um status à parte, exclusivo do menu de projetistas: nada é gravado,
+ * é derivação da data de entrega (o marco 'entrega_projetista' na auditoria,
+ * com o prazo realizado como retaguarda para os itens antigos).
+ * ------------------------------------------------------------------ */
+
+export type ItemDatasProjetista = ItemDatas & {
+  /** Marco da entrega do projetista (ida para 'em_analise'). */
+  entregaProjetista?: string | null;
+  status: StatusItem;
+};
+
+/**
+ * Deriva tom/rótulo/desvio de um item na ótica do projetista. O desvio da
+ * entrega é medido contra o prazo PREVISTO original — entregar na data
+ * reprogramada continua sendo atraso, igual à regra do item.
+ */
+export function derivarStatusProjetista(
+  it: ItemDatasProjetista,
+  hoje: Date,
+): StatusDerivado {
+  const alvo = parseISO(it.prazoReprogramado) ?? parseISO(it.prazoPrevisto);
+  // A entrega do projetista fecha a parte dele; sem o marco (itens anteriores
+  // ao registro dele), o prazo realizado responde pela data.
+  const entrega = parseISO(it.entregaProjetista) ?? parseISO(it.prazoRealizado);
+  const entregue =
+    !!entrega || it.status === "em_analise" || it.status === "finalizado";
+
+  let tom: Tom = "cinza";
+  let rotulo = ROTULO_STATUS[it.status];
+  let desvio = "—";
+  let desvioTom: Tom = "cinza";
+
+  if (entregue) {
+    tom = "verde";
+    rotulo = "Finalizado";
+    const base = parseISO(it.prazoPrevisto) ?? alvo;
+    if (entrega && base) {
+      const d = Math.round((entrega.getTime() - base.getTime()) / 86400000);
+      if (d > 0) {
+        desvio = textoAtraso(d, "Entregue com ");
+        desvioTom = "ambar";
+      } else {
+        desvio = "Entregue no prazo";
+        desvioTom = "verde";
+      }
+    } else {
+      desvio = "Entregue";
+      desvioTom = "verde";
+    }
+  } else if (alvo && alvo < hoje) {
+    tom = "vermelho";
+    rotulo = "Atrasado";
+    const d = Math.round((hoje.getTime() - alvo.getTime()) / 86400000);
+    desvio = `Atraso de ${d} ${d === 1 ? "dia" : "dias"}`;
+    desvioTom = "vermelho";
+  } else if (alvo) {
+    tom = "ambar";
+    rotulo = ROTULO_STATUS.em_andamento;
+    const d = Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
+    desvio = textoAVencer(d);
+    // Prazo já reprogramado: o original estourou, então o alerta continua.
+    desvioTom = it.prazoReprogramado ? "vermelho" : "cinza";
+  }
+
+  // Revisão em aberto: o item voltou para o projetista, então a parte dele
+  // reabriu — a marca fica no rótulo, o desvio segue a regra acima.
+  if (it.emRevisao && !entregue) {
+    rotulo = rotulo === "Atrasado" ? "Atrasado (Revisão)" : "Em andamento (Revisão)";
+  }
+
+  return { tom, rotulo, atrasado: tom === "vermelho", desvio, desvioTom };
+}

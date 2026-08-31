@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Projetista } from "@/db/schema";
-import type { DesempenhoProjetista } from "@/lib/actions/projetistas";
+import type { AtrasoProjetista, PainelProjetista } from "@/lib/actions/projetistas";
 import {
   deleteProjetista,
-  listDesempenhoProjetista,
+  listPainelProjetista,
   updateProjetista,
 } from "@/lib/actions/projetistas";
-import { derivarStatus, formatBR, parseISO } from "@/lib/ui/status";
+import type { StatusDerivado } from "@/lib/ui/status";
+import { derivarStatusProjetista, formatBR, parseISO } from "@/lib/ui/status";
 import { formatTelefone } from "@/lib/ui/telefone";
 import { DesvioBadge, StatusBadge } from "./StatusBadge";
 
@@ -62,7 +63,7 @@ export function ProjetistasTable({
 }
 
 /* ------------------------------------------------------------------ *
- * Drawer do projetista — cadastro + histórico de desempenho
+ * Drawer do projetista — cadastro + desempenho + histórico de atrasos
  * ------------------------------------------------------------------ */
 
 type Draft = { nome: string; telefone: string; email: string };
@@ -87,14 +88,14 @@ function ProjetistaDrawer({
   }));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [historico, setHistorico] = useState<DesempenhoProjetista[] | null>(null);
+  const [painel, setPainel] = useState<PainelProjetista | null>(null);
 
-  // Carrega o desempenho do projetista ao abrir.
+  // Carrega desempenho + atrasos do projetista ao abrir.
   useEffect(() => {
     let vivo = true;
-    listDesempenhoProjetista(projetista.id)
-      .then((h) => vivo && setHistorico(h))
-      .catch(() => vivo && setHistorico([]));
+    listPainelProjetista(projetista.id)
+      .then((p) => vivo && setPainel(p))
+      .catch(() => vivo && setPainel({ itens: [], atrasos: [] }));
     return () => {
       vivo = false;
     };
@@ -105,16 +106,34 @@ function ProjetistaDrawer({
     setDraft((d) => ({ ...d, [campo]: valor }));
   };
 
-  // Resumo agregado + linhas já com o desvio derivado.
-  const { linhas, resumo } = useMemo(() => {
-    const linhas = (historico ?? []).map((h) => ({ ...h, d: derivarStatus(h, hoje) }));
+  // Resumo agregado + linhas já com o desvio derivado NA ÓTICA DO PROJETISTA:
+  // item em análise já conta como entregue (ele mandou o projeto para a equipe).
+  const { linhas, atrasos, desvioPorItem, resumo } = useMemo(() => {
+    const linhas = (painel?.itens ?? []).map((h) => ({
+      ...h,
+      d: derivarStatusProjetista(h, hoje),
+    }));
+    const atrasos = painel?.atrasos ?? [];
+    // O desvio de cada ocorrência de atraso é o do item HOJE — indexado por id.
+    const desvioPorItem = new Map(linhas.map((l) => [l.id, l.d]));
+
     const total = linhas.length;
-    const concluidos = linhas.filter((l) => l.prazoRealizado).length;
-    const noPrazo = linhas.filter((l) => l.prazoRealizado && l.d.desvioTom === "verde").length;
-    const emAtraso = linhas.filter((l) => !l.prazoRealizado && l.d.atrasado).length;
-    const pct = concluidos ? Math.round((noPrazo / concluidos) * 100) : null;
-    return { linhas, resumo: { total, concluidos, noPrazo, emAtraso, pct } };
-  }, [historico, hoje]);
+    const entregues = linhas.filter((l) => l.d.rotulo === "Finalizado").length;
+    const noPrazo = linhas.filter(
+      (l) => l.d.rotulo === "Finalizado" && l.d.desvioTom === "verde",
+    ).length;
+    const emAtraso = linhas.filter((l) => l.d.atrasado).length;
+    const pct = entregues ? Math.round((noPrazo / entregues) * 100) : null;
+    // Reincidência: itens que estouraram prazo mais de uma vez (previsto e
+    // depois a reprogramação) — o sinal mais forte contra o projetista.
+    const reincidentes = new Set(atrasos.filter((a) => a.ordem > 1).map((a) => a.itemId)).size;
+    return {
+      linhas,
+      atrasos,
+      desvioPorItem,
+      resumo: { total, entregues, noPrazo, emAtraso, pct, reincidentes },
+    };
+  }, [painel, hoje]);
 
   async function salvar() {
     if (!draft.nome.trim()) return setErro("Informe o nome do projetista.");
@@ -153,7 +172,7 @@ function ProjetistaDrawer({
   return (
     <div>
       <div className="drawer-overlay" onClick={onClose} />
-      <aside className="drawer-panel">
+      <aside className="drawer-panel drawer-panel--wide">
         <div className="drawer-head">
           <div>
             <div className="drawer-head__eyebrow mono">PROJETISTA</div>
@@ -207,8 +226,10 @@ function ProjetistaDrawer({
 
           <div className="drawer-derived">
             <div>
-              <div className="field__label">Itens concluídos</div>
-              <div className="mono">{resumo.concluidos} de {resumo.total}</div>
+              <div className="field__label">Itens finalizados</div>
+              <div className="mono">
+                {resumo.entregues} de {resumo.total}
+              </div>
             </div>
             <div>
               <div className="field__label">Entregas no prazo</div>
@@ -218,13 +239,21 @@ function ProjetistaDrawer({
               <div className="field__label">Em atraso hoje</div>
               <div className={`mono${resumo.emAtraso > 0 ? " td-danger" : ""}`}>{resumo.emAtraso}</div>
             </div>
+            <div>
+              <div className="field__label">Atrasos no histórico</div>
+              <div className={`mono${atrasos.length > 0 ? " td-danger" : ""}`}>{atrasos.length}</div>
+            </div>
           </div>
 
           <div className="drawer-history">
-            <div className="field__label" style={{ marginBottom: "10px" }}>
-              Histórico de desempenho
+            <div className="drawer-section-head">
+              <span className="field__label">Histórico de desempenho</span>
+              <span className="drawer-section-head__nota">
+                O item vai para "Finalizado" aqui assim que entra em análise — nesse
+                ponto o projetista já enviou o projeto para a equipe.
+              </span>
             </div>
-            {historico === null ? (
+            {painel === null ? (
               <div className="drawer-history__empty">Carregando…</div>
             ) : linhas.length === 0 ? (
               <div className="drawer-history__empty">
@@ -232,14 +261,14 @@ function ProjetistaDrawer({
               </div>
             ) : (
               <div className="table-wrap">
-                <table className="data-table" style={{ minWidth: "620px" }}>
+                <table className="data-table" style={{ minWidth: "740px" }}>
                   <thead>
                     <tr>
                       <th>Empreendimento</th>
                       <th>Disciplina</th>
                       <th>Etapa</th>
                       <th>Status</th>
-                      <th>Realizado</th>
+                      <th>Entrega</th>
                       <th className="ta-right">Desvio</th>
                     </tr>
                   </thead>
@@ -252,11 +281,52 @@ function ProjetistaDrawer({
                         <td>
                           <StatusBadge tom={l.d.tom} rotulo={l.d.rotulo} />
                         </td>
-                        <td className="mono td-muted">{formatBR(l.prazoRealizado)}</td>
+                        <td className="mono td-muted">{formatBR(l.entregaProjetista)}</td>
                         <td className="ta-right">
                           <DesvioBadge tom={l.d.desvioTom} texto={l.d.desvio} />
                         </td>
                       </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="drawer-history">
+            <div className="drawer-section-head">
+              <span className="field__label">Histórico de atrasos</span>
+              <span className="drawer-section-head__nota">
+                {resumo.reincidentes > 0
+                  ? `${resumo.reincidentes} ${
+                      resumo.reincidentes === 1 ? "item reincidente" : "itens reincidentes"
+                    } (atrasou o previsto e depois o reprogramado)`
+                  : "Uma linha por prazo estourado — previsto e cada reprogramação."}
+              </span>
+            </div>
+            {painel === null ? (
+              <div className="drawer-history__empty">Carregando…</div>
+            ) : atrasos.length === 0 ? (
+              <div className="drawer-history__empty">
+                Nenhum atraso registrado para este projetista.
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table" style={{ minWidth: "900px" }}>
+                  <thead>
+                    <tr>
+                      <th>Empreendimento</th>
+                      <th>Disciplina</th>
+                      <th>Etapa</th>
+                      <th>Início</th>
+                      <th>Data do atraso</th>
+                      <th>Realizado</th>
+                      <th className="ta-right">Desvio hoje</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {atrasos.map((a) => (
+                      <LinhaAtraso key={a.id} atraso={a} desvio={desvioPorItem.get(a.itemId)} />
                     ))}
                   </tbody>
                 </table>
@@ -283,5 +353,45 @@ function ProjetistaDrawer({
         )}
       </aside>
     </div>
+  );
+}
+
+/**
+ * Uma ocorrência de atraso. A coluna "Data do atraso" é o prazo que furou —
+ * o previsto original ou a reprogramação —, e a tag ao lado diz qual dos dois
+ * foi, marcando em vermelho a reincidência (2º atraso do mesmo item).
+ */
+function LinhaAtraso({
+  atraso: a,
+  desvio,
+}: {
+  atraso: AtrasoProjetista;
+  desvio?: StatusDerivado;
+}) {
+  const rotuloOrigem =
+    a.origem === "reprogramado" ? `Reprogramado · ${a.ordem}º atraso` : "Prazo previsto";
+  return (
+    <tr>
+      <td className="td-muted">{a.empreendimentoNome}</td>
+      <td className="td-strong">{a.disciplinaNome}</td>
+      <td>{a.etapaNome}</td>
+      <td className="mono td-muted">{formatBR(a.dataInicio)}</td>
+      <td>
+        <span className="mono td-danger">{formatBR(a.prazoAtraso)}</span>{" "}
+        <span className={`tag-origem${a.ordem > 1 ? " tag-origem--reincidencia" : ""}`}>
+          {rotuloOrigem}
+        </span>
+      </td>
+      <td className="mono td-muted">
+        {a.realizado
+          ? formatBR(a.realizado)
+          : a.reprogramadoPara
+            ? `Reprog. ${formatBR(a.reprogramadoPara)} (+${a.dias}d)`
+            : `Em aberto (+${a.dias}d)`}
+      </td>
+      <td className="ta-right">
+        {desvio ? <DesvioBadge tom={desvio.desvioTom} texto={desvio.desvio} /> : "—"}
+      </td>
+    </tr>
   );
 }
