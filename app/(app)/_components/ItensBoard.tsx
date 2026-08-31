@@ -162,7 +162,6 @@ export function ItensBoard({
         <table className="data-table" style={{ minWidth: "1460px" }}>
           <thead>
             <tr>
-              <th style={{ width: "44px" }}>#</th>
               <th>Disciplina</th>
               <th>Etapa</th>
               <th>Projetista</th>
@@ -193,9 +192,6 @@ export function ItensBoard({
                     className={`row-item${d.atrasado ? " row-item--atrasado" : ""}`}
                     onClick={() => setAberto(it)}
                   >
-                    <td className="mono td-muted">
-                      {it.item != null ? String(it.item).padStart(2, "0") : "—"}
-                    </td>
                     <td className="td-strong">{it.disciplinaNome}</td>
                     <td>{it.etapaNome}</td>
                     <td className="td-muted">{it.projetistaNome ?? "—"}</td>
