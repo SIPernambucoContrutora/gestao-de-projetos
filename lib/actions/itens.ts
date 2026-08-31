@@ -328,7 +328,10 @@ export async function createItem(input: ItemInput): Promise<ItemProjeto> {
     }),
   ]);
 
+  // O dashboard consolidado ("/") lista os itens de TODOS os empreendimentos:
+  // sem revalidá-lo, ele segue servindo a versão em cache depois da edição.
   revalidatePath(`/empreendimentos/${input.empreendimentoId}`);
+  revalidatePath("/");
   return inseridos[0];
 }
 
@@ -573,7 +576,10 @@ export async function updateItem(
   ]);
 
   const row = atualizados[0];
+  // O dashboard consolidado ("/") lista os itens de TODOS os empreendimentos:
+  // sem revalidá-lo, ele segue servindo a versão em cache depois da edição.
   revalidatePath(`/empreendimentos/${row.empreendimentoId}`);
+  revalidatePath("/");
   return row;
 }
 
@@ -618,6 +624,9 @@ export async function deleteItem(id: string): Promise<{ id: string }> {
     }),
   ]);
 
+  // O dashboard consolidado ("/") lista os itens de TODOS os empreendimentos:
+  // sem revalidá-lo, ele segue servindo a versão em cache depois da edição.
   revalidatePath(`/empreendimentos/${alvo.empreendimentoId}`);
+  revalidatePath("/");
   return { id };
 }

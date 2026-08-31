@@ -159,6 +159,9 @@ export async function abrirRevisao(itemId: string, solicitacao: string): Promise
     db.insert(historicoAlteracoes).values(diffs.map((d) => ({ ...contexto, ...d }))),
   ]);
 
+  // O dashboard consolidado ("/") lista os itens de TODOS os empreendimentos:
+  // sem revalidá-lo, ele segue servindo a versão em cache depois da edição.
   revalidatePath(`/empreendimentos/${item.empreendimentoId}`);
+  revalidatePath("/");
   return inseridas[0];
 }
