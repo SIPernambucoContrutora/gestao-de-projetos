@@ -357,9 +357,10 @@ function ProjetistaDrawer({
 }
 
 /**
- * Uma ocorrência de atraso. A coluna "Data do atraso" é o prazo que furou —
- * o previsto original ou a reprogramação —, e a tag ao lado diz qual dos dois
- * foi, marcando em vermelho a reincidência (2º atraso do mesmo item).
+ * Uma ocorrência de atraso. "Data do atraso" é o prazo que furou — o previsto
+ * original ou a reprogramação —, com os dias daquela ocorrência e uma tag
+ * dizendo qual dos dois foi, em vermelho quando é reincidência (2º atraso do
+ * mesmo item). Já "Realizado" e "Desvio hoje" são do ITEM, não da ocorrência.
  */
 function LinhaAtraso({
   atraso: a,
@@ -378,17 +379,21 @@ function LinhaAtraso({
       <td className="mono td-muted">{formatBR(a.dataInicio)}</td>
       <td>
         <span className="mono td-danger">{formatBR(a.prazoAtraso)}</span>{" "}
-        <span className={`tag-origem${a.ordem > 1 ? " tag-origem--reincidencia" : ""}`}>
+        <span className="mono td-danger">+{a.dias}d</span>{" "}
+        <span
+          className={`tag-origem${a.ordem > 1 ? " tag-origem--reincidencia" : ""}`}
+          title={
+            a.reprogramadoPara
+              ? `Reprogramado para ${formatBR(a.reprogramadoPara)}`
+              : a.emAberto
+                ? "Sem entrega e sem reprogramação — o atraso ainda corre"
+                : `Entregue pelo projetista em ${formatBR(a.realizado)}`
+          }
+        >
           {rotuloOrigem}
         </span>
       </td>
-      <td className="mono td-muted">
-        {a.realizado
-          ? formatBR(a.realizado)
-          : a.reprogramadoPara
-            ? `Reprog. ${formatBR(a.reprogramadoPara)} (+${a.dias}d)`
-            : `Em aberto (+${a.dias}d)`}
-      </td>
+      <td className="mono td-muted">{formatBR(a.prazoRealizado)}</td>
       <td className="ta-right">
         {desvio ? <DesvioBadge tom={desvio.desvioTom} texto={desvio.desvio} /> : "—"}
       </td>

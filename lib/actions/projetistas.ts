@@ -64,7 +64,13 @@ export type AtrasoProjetista = {
   prazoAtraso: string | null;
   /** De onde veio esse prazo. */
   origem: "previsto" | "reprogramado";
-  /** Entrega do projetista (em análise / realizado). Null se ele não entregou. */
+  /**
+   * Prazo REALIZADO do item — o mesmo campo que a listagem de itens mostra.
+   * É do item, não da ocorrência: as duas últimas colunas da tabela (realizado
+   * e desvio) falam do estado do item hoje, e não do momento do atraso.
+   */
+  prazoRealizado: string | null;
+  /** Entrega do projetista (ida para análise). Null se ele não entregou. */
   realizado: string | null;
   /** Para onde o prazo foi empurrado, quando o atraso virou reprogramação. */
   reprogramadoPara: string | null;
@@ -117,6 +123,7 @@ function derivarAtrasos(
     etapaNome: it.etapaNome,
     item: it.item,
     dataInicio: it.dataInicio,
+    prazoRealizado: it.prazoRealizado,
   };
   const out: AtrasoProjetista[] = [];
   const registrar = (o: Omit<AtrasoProjetista, keyof typeof base | "id" | "ordem">) => {
