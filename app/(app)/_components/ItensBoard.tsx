@@ -365,6 +365,14 @@ function ItemDrawer({
       usuarioAnaliseNome: usuarios.find((u) => u.id === draft.usuarioAnaliseId)?.nome ?? null,
       enviadoAutodoc: draft.enviadoAutodoc,
       emRevisao: item.emRevisao,
+      // Espelha o que updateItem vai gravar: sair de 'Em análise' para 'Em
+      // andamento' marca os ajustes; voltar para a análise limpa a marca.
+      ajustesPosAnalise:
+        draft.status === "em_analise"
+          ? false
+          : item.status === "em_analise" && draft.status === "em_andamento"
+            ? true
+            : item.ajustesPosAnalise,
     },
     hoje,
   );

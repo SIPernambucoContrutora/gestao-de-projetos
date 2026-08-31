@@ -148,6 +148,13 @@ export const itensProjeto = pgTable(
     // mas evita um LATERAL em toda listagem e é o que faz o badge dizer
     // "Em andamento (Revisão)". Sincronizado pelas Server Actions.
     emRevisao: boolean("em_revisao").notNull().default(false),
+    // O item VOLTOU da análise: a equipe pediu correções e ele saiu de
+    // 'em_analise' de volta para 'em_andamento'. É só rótulo ("Ajustes pós
+    // análises" em derivarStatus) — o status gravado segue 'em_andamento' e
+    // o desvio segue a regra normal de prazo. Sincronizado pelas Server
+    // Actions, como emRevisao. Zerado ao entrar numa nova análise ou numa
+    // nova revisão.
+    ajustesPosAnalise: boolean("ajustes_pos_analise").notNull().default(false),
     // Preenchido apenas no menu de itens; exibido também no dashboard, mas
     // somente para visualização (não editável por lá).
     enviadoAutodoc: boolean("enviado_autodoc").notNull().default(false),
@@ -161,6 +168,7 @@ export const itensProjeto = pgTable(
     index("itens_projeto_prioridade_idx").on(t.prioridade),
     index("itens_projeto_usuario_analise_id_idx").on(t.usuarioAnaliseId),
     index("itens_projeto_em_revisao_idx").on(t.emRevisao),
+    index("itens_projeto_ajustes_pos_analise_idx").on(t.ajustesPosAnalise),
   ],
 );
 

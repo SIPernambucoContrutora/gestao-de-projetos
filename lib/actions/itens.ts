@@ -507,6 +507,23 @@ export async function updateItem(
     });
   }
 
+  // VOLTA DA ANÁLISE: sair de 'em_analise' para 'em_andamento' significa que
+  // a equipe devolveu o item pedindo correções — daí em diante ele aparece
+  // como 'Ajustes pós análises' (ver derivarStatus). A marca não é editável:
+  // é consequência da transição, então é gravada aqui e zerada ao começar
+  // uma nova análise. Só o rótulo muda; status e desvio seguem normais.
+  if (item.status === "em_analise" && statusFinal === "em_andamento") {
+    updateValues.ajustesPosAnalise = true;
+    diffs.push({
+      campo: "ajustes_pos_analise",
+      valorAntigo: null,
+      valorNovo: "Item devolvido da análise para ajustes",
+    });
+  } else if (statusFinal === "em_analise" && item.ajustesPosAnalise) {
+    // Nova análise começa: o ciclo de ajustes anterior terminou.
+    updateValues.ajustesPosAnalise = false;
+  }
+
   // Marco explícito da entrega: o par revisao_atual/data_revisao acima diz
   // o QUE mudou, esta linha diz por quê.
   if (fechamento) {

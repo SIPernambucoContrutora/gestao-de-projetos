@@ -110,6 +110,8 @@ export const ROTULO_CAMPO_HISTORICO: Record<string, string> = {
   prioridade: "prioridade",
   // Marco do projetista: gravado junto com a ida para 'em_analise'.
   entrega_projetista: "entrega do projetista",
+  // Marco da volta da análise: o item saiu de 'em_analise' para ajustes.
+  ajustes_pos_analise: "ajustes pós análises",
   // LEGADO: a meta saiu da interface; o rótulo fica para o histórico antigo.
   meta_dias: "meta",
   observacoes: "observações",
@@ -200,6 +202,10 @@ export type ItemDatas = {
   // Há uma revisão EM ABERTO: o item voltou para a equipe depois de já ter
   // sido finalizado. Muda só o rótulo — o desvio segue a regra normal.
   emRevisao?: boolean | null;
+  // O item VOLTOU da análise: saiu de 'em_analise' para 'em_andamento'
+  // porque a equipe pediu correções. Como o emRevisao, muda só o rótulo
+  // ('Ajustes pós análises') — o desvio segue a regra normal do prazo.
+  ajustesPosAnalise?: boolean | null;
 };
 
 export type StatusDerivado = {
@@ -254,6 +260,16 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
   // rótulo genérico, então prevalece sobre "Atrasado" (o tom vermelho fica).
   if (it.status === "em_analise" && it.usuarioAnaliseNome) {
     rotulo = `Em análise por ${it.usuarioAnaliseNome}`;
+  }
+
+  // Voltou da análise: enquanto o item estiver em andamento depois de ter
+  // sido devolvido pela equipe, o rótulo diz que o que está em curso são os
+  // AJUSTES pedidos na análise, não um andamento qualquer. Só o rótulo muda:
+  // o status gravado segue 'em_andamento' (métricas, filtros e ordenação não
+  // sentem nada) e o desvio é calculado adiante pela regra normal. Estourar o
+  // prazo continua virando 'Atrasado', sem perder a marca dos ajustes.
+  if (it.ajustesPosAnalise && it.status === "em_andamento" && !real) {
+    rotulo = rotulo === "Atrasado" ? "Atrasado (Ajustes pós análises)" : "Ajustes pós análises";
   }
 
   // Item com revisão EM ABERTO. Ao abrir a revisão os prazos são zerados,

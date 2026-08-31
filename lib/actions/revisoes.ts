@@ -101,6 +101,8 @@ export async function abrirRevisao(itemId: string, solicitacao: string): Promise
   const zerado = {
     status: "pendente" as const,
     emRevisao: true,
+    // Ciclo novo: a marca de ajustes da análise anterior não vale mais.
+    ajustesPosAnalise: false,
     usuarioAnaliseId: null,
     dataInicio: hoje,
     prazoPrevisto: null,
