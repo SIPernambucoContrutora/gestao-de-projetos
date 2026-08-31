@@ -96,8 +96,6 @@ export type ItemDashboard = ItemComRefs & {
 //  2) dentro do grupo, a data-alvo mais próxima primeiro (reprogramado tem
 //     precedência sobre previsto); itens sem nenhuma data ficam ao final.
 // O CASE espelha ORDEM_STATUS em lib/ui/status.ts.
-// O dashboard antepõe a prioridade a esses dois critérios (ORDEM_PRIORIDADE_SQL);
-// a lista de um empreendimento segue só por status e data-alvo.
 const ORDEM_STATUS_SQL = sql`case ${itensProjeto.status}
   when 'pendente' then 0
   when 'em_andamento' then 1
@@ -106,15 +104,6 @@ const ORDEM_STATUS_SQL = sql`case ${itensProjeto.status}
   else 4 end asc`;
 
 const ORDEM_DATA_ALVO = sql`coalesce(${itensProjeto.prazoReprogramado}, ${itensProjeto.prazoPrevisto}) asc nulls last`;
-
-// Critério principal do dashboard: a prioridade do item, da maior para a
-// menor. Status e data-alvo continuam valendo, mas como desempate dentro de
-// cada faixa de prioridade. Espelha PRIORIDADES em lib/ui/status.ts, invertida.
-const ORDEM_PRIORIDADE_SQL = sql`case ${itensProjeto.prioridade}
-  when 'alta' then 0
-  when 'media' then 1
-  when 'baixa' then 2
-  else 3 end asc`;
 
 // Nome exibível de quem analisa: o join com neon_auth.user é por cast, pois
 // usuario_analise_id é text e neon_auth.user.id é uuid (mesma razão do join
@@ -195,7 +184,7 @@ export async function listTodosItens(): Promise<ItemDashboard[]> {
     .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
     .leftJoin(neonAuthUser, JOIN_USUARIO_ANALISE)
     .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
-    .orderBy(ORDEM_PRIORIDADE_SQL, ORDEM_STATUS_SQL, ORDEM_DATA_ALVO);
+    .orderBy(ORDEM_STATUS_SQL, ORDEM_DATA_ALVO);
 
   return rows.map((r) => ({
     ...r.item,
