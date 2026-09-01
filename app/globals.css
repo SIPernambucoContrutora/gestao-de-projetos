@@ -335,6 +335,7 @@ button {
 .dot--vermelho { background: #b23a2b; }
 .dot--cinza { background: #a8c8cc; }
 .dot--azul { background: #1a5fb5; }
+.dot--rosa { background: #c4327c; }
 
 /* Grade elástica: os cards ficam em uma linha só enquanto couberem com
    largura legível e quebram para a linha de baixo em telas estreitas. */
@@ -524,6 +525,14 @@ button {
 }
 .badge--azul .badge__dot {
   background: #1a5fb5;
+}
+/* Rosa: só o item devolvido da análise ("Em Ajustes, pós Análise"). */
+.badge--rosa {
+  color: #9c2361;
+  background: #fce8f2;
+}
+.badge--rosa .badge__dot {
+  background: #c4327c;
 }
 
 /* ------------------------------------------------------------------ *
@@ -719,6 +728,10 @@ textarea.input {
 .desvio--azul {
   color: #17498a;
   background: #e6eefb;
+}
+.desvio--rosa {
+  color: #9c2361;
+  background: #fce8f2;
 }
 .data-table__empty {
   padding: 28px 12px;

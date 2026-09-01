@@ -6,7 +6,9 @@ import type { PrioridadeItem, StatusItem } from "@/db/schema";
  * Usado no servidor e no cliente, então é puro (sem I/O).
  * ------------------------------------------------------------------ */
 
-export type Tom = "verde" | "ambar" | "vermelho" | "cinza" | "azul";
+// "rosa" é exclusivo do item que voltou da análise ("Em Ajustes, pós
+// Análise") — não é derivado de prazo, marca uma etapa do fluxo.
+export type Tom = "verde" | "ambar" | "vermelho" | "cinza" | "azul" | "rosa";
 
 export const ROTULO_STATUS: Record<StatusItem, string> = {
   pendente: "Pendente",
@@ -264,12 +266,19 @@ export function derivarStatus(it: ItemDatas, hoje: Date): StatusDerivado {
 
   // Voltou da análise: enquanto o item estiver em andamento depois de ter
   // sido devolvido pela equipe, o rótulo diz que o que está em curso são os
-  // AJUSTES pedidos na análise, não um andamento qualquer. Só o rótulo muda:
-  // o status gravado segue 'em_andamento' (métricas, filtros e ordenação não
-  // sentem nada) e o desvio é calculado adiante pela regra normal. Estourar o
-  // prazo continua virando 'Atrasado', sem perder a marca dos ajustes.
+  // AJUSTES pedidos na análise, não um andamento qualquer — em ROSA, cor
+  // exclusiva desta etapa. Só a aparência do status muda: o status gravado
+  // segue 'em_andamento' (métricas, filtros e ordenação não sentem nada) e o
+  // desvio é calculado adiante pela regra normal. Estourar o prazo continua
+  // virando 'Atrasado' — aí o vermelho prevalece sobre o rosa, para o atraso
+  // não se perder, mas o rótulo mantém a marca dos ajustes.
   if (it.ajustesPosAnalise && it.status === "em_andamento" && !real) {
-    rotulo = rotulo === "Atrasado" ? "Atrasado (Ajustes pós análises)" : "Ajustes pós análises";
+    if (rotulo === "Atrasado") {
+      rotulo = "Atrasado (Em Ajustes, pós Análise)";
+    } else {
+      rotulo = "Em Ajustes, pós Análise";
+      tom = "rosa";
+    }
   }
 
   // Item com revisão EM ABERTO. Ao abrir a revisão os prazos são zerados,
