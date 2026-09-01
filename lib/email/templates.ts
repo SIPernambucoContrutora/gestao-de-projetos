@@ -74,46 +74,56 @@ export type DadosItem = {
 
 export type Mensagem = { assunto: string; html: string; texto: string };
 
+/**
+ * O escopo citado no corpo ("o projeto X"). A planta é o nome que o
+ * projetista reconhece; sem ela, disciplina + etapa é o mais próximo
+ * disso — deixar a frase com um vazio no meio seria pior.
+ */
+function escopo(d: Pick<DadosItem, "planta" | "disciplina" | "etapa">): string {
+  return d.planta?.trim() || `${d.disciplina} — ${d.etapa}`;
+}
+
 /** Aviso das 08h: o prazo do item vence HOJE. */
 export function mensagemVencimento(d: DadosItem): Mensagem {
   const identificacao = d.itemNumero ? `Item ${d.itemNumero}` : d.disciplina;
+  const alvo = escopo(d);
 
   const assunto = `[Gestão das Obras] Vence hoje: ${identificacao} — ${d.empreendimento}`;
 
-  const tabela = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">
-    ${linha("Empreendimento", d.empreendimento)}
-    ${linha("Disciplina", d.disciplina)}
-    ${linha("Etapa", d.etapa)}
-    ${d.itemNumero ? linha("Item", String(d.itemNumero)) : ""}
-    ${d.planta ? linha("Planta", d.planta) : ""}
-    ${linha("Prazo", d.prazoBR)}
-  </table>`;
+  const p = (conteudo: string) =>
+    `<p style="margin:0 0 16px;line-height:1.6;color:#1f2937">${conteudo}</p>`;
 
   const html = moldura(
-    "Prazo vence hoje",
-    d.prazoBR,
-    `<p style="margin:0 0 16px;line-height:1.6;color:#1f2937">Olá, ${escaparHtml(d.projetistaNome)}.</p>
-     <p style="margin:0 0 16px;line-height:1.6;color:#1f2937">O prazo do item abaixo <strong style="color:${ACCENT}">vence hoje</strong>.</p>
-     ${tabela}
-     <p style="margin:0;line-height:1.6;color:#1f2937">Se a entrega já foi feita ou o prazo precisa ser reprogramado, avise a equipe de gestão de projetos.</p>`,
+    "Lembrete de prazo",
+    `${d.empreendimento} — vence em ${d.prazoBR}`,
+    [
+      p(`Olá, ${escaparHtml(d.projetistaNome)},`),
+      p(
+        `Passando para lembrar que, conforme combinamos, a data prevista para o envio do projeto <strong>${escaparHtml(alvo)}</strong> é hoje, <strong>${escaparHtml(d.prazoBR)}</strong>.`,
+      ),
+      p("Pedimos, por gentileza, que realize o envio do projeto dentro do prazo combinado."),
+      p(
+        "Caso não seja possível realizar o envio hoje, solicitamos que entre em contato conosco para informar a situação e alinharmos um novo prazo para o envio.",
+      ),
+      p("Caso o projeto já tenha sido enviado, desconsidere este lembrete."),
+      `<p style="margin:24px 0 0;line-height:1.6;color:#1f2937">Atenciosamente,<br><strong>Pernambuco Construtora</strong></p>`,
+    ].join(""),
   );
 
   const texto = [
-    `Olá, ${d.projetistaNome}.`,
+    `Olá, ${d.projetistaNome},`,
     "",
-    "O prazo do item abaixo vence hoje.",
+    `Passando para lembrar que, conforme combinamos, a data prevista para o envio do projeto ${alvo} é hoje, ${d.prazoBR}.`,
     "",
-    `Empreendimento: ${d.empreendimento}`,
-    `Disciplina: ${d.disciplina}`,
-    `Etapa: ${d.etapa}`,
-    d.itemNumero ? `Item: ${d.itemNumero}` : null,
-    d.planta ? `Planta: ${d.planta}` : null,
-    `Prazo: ${d.prazoBR}`,
+    "Pedimos, por gentileza, que realize o envio do projeto dentro do prazo combinado.",
     "",
-    "Se a entrega já foi feita ou o prazo precisa ser reprogramado, avise a equipe de gestão de projetos.",
-  ]
-    .filter((l) => l !== null)
-    .join("\n");
+    "Caso não seja possível realizar o envio hoje, solicitamos que entre em contato conosco para informar a situação e alinharmos um novo prazo para o envio.",
+    "",
+    "Caso o projeto já tenha sido enviado, desconsidere este lembrete.",
+    "",
+    "Atenciosamente,",
+    "Pernambuco Construtora",
+  ].join("\n");
 
   return { assunto, html, texto };
 }
@@ -153,7 +163,7 @@ export function mensagemRevisao(
   const texto = [
     `Olá, ${d.projetistaNome}.`,
     "",
-    `Foi aberta uma revisão (${numeroRevisao}) para o item abaixo.`,
+    `Foi aberta uma revisão para o item abaixo.`,
     "",
     `Empreendimento: ${d.empreendimento}`,
     `Disciplina: ${d.disciplina}`,
@@ -164,7 +174,7 @@ export function mensagemRevisao(
     "O que foi solicitado:",
     solicitacao,
     "",
-    "O prazo desta revisão será combinado com a equipe de gestão de projetos.",
+    "Favor retornar com o prazo previsto para esta revisão.",
   ]
     .filter((l) => l !== null)
     .join("\n");
