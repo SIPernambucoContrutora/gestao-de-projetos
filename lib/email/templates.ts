@@ -108,7 +108,7 @@ export function mensagemVencimento(d: DadosItem): Mensagem {
         "Caso não seja possível realizar o envio hoje, solicitamos que entre em contato conosco para informar a situação e alinharmos um novo prazo para o envio.",
       ),
       p("Caso o projeto já tenha sido enviado, desconsidere este lembrete."),
-      `<p style="margin:24px 0 0;line-height:1.6;color:#1f2937">Atenciosamente,<br><strong>Pernambuco Construtora</strong></p>`,
+      `<p style="margin:24px 0 0;line-height:1.6;color:#1f2937">Atenciosamente,<br><strong>Setor de Projetos de Incorporação</strong><br><strong>Pernambuco Construtora</strong></p>`,
     ].join(""),
   );
 
