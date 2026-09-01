@@ -23,6 +23,7 @@ apenas como referência) para um app real, multiusuário e com dados no banco.
 - [Telas](#telas)
 - [Migrations](#migrations)
 - [Scripts](#scripts)
+- [E-mails automáticos](#e-mails-automáticos-para-projetistas)
 - [Notas e limitações conhecidas](#notas-e-limitações-conhecidas)
 
 ---
@@ -362,6 +363,222 @@ npm run db:studio    # drizzle-kit studio
 ```
 
 ---
+
+## E-mails automáticos para projetistas
+
+Dois disparos, ambos para o e-mail cadastrado do projetista, saindo de
+`gestaodeprojetos@pernambucoconstrutora.com.br` via SMTP.
+
+| Gatilho | Quando | Corpo |
+|---|---|---|
+| `vencimento_hoje` | Todo dia às 08h (Recife), para itens cujo prazo vigente vence hoje | Ficha do item + prazo |
+| `revisao_aberta` | No `abrirRevisao` (botão "Nova revisão") | O texto digitado na solicitação |
+
+**Prazo vigente** = `prazo_reprogramado ?? prazo_previsto` — a mesma regra de
+`derivarStatus`. Reprogramar move o aviso junto. Ficam de fora itens já
+entregues (`prazo_realizado` preenchido) e os status `finalizado` / `em_analise`:
+nesses o item está com a equipe, não com o projetista.
+
+### Peças
+
+| Arquivo | Papel |
+|---|---|
+| `lib/email/smtp.ts` | Transporter nodemailer com pool, criado uma vez por processo |
+| `lib/email/templates.ts` | Assunto + HTML/texto. Escapa o que foi digitado |
+| `lib/email/enviar.ts` | Envio + registro em `emails_enviados`. **Nunca lança** |
+| `lib/email/vencimentos.ts` | A varredura diária |
+| `app/api/cron/vencimentos/route.ts` | Rota chamada pelo agendador |
+
+### Idempotência
+
+A tabela `emails_enviados` tem índice único em `(tipo, item_id, referencia)`,
+com `NULLS NOT DISTINCT`. A linha é gravada **antes** do envio, via
+`INSERT ... ON CONFLICT DO NOTHING`: quem não consegue inserir sabe que outra
+execução já assumiu o disparo. É isso que impede o cron de duplicar o aviso ao
+reexecutar (retry da plataforma, deploy no meio da janela, chamada manual).
+
+A `referencia` é o que distingue os envios dentro do tipo: a **data do prazo**
+para o aviso diário, o **id da revisão** para a revisão.
+
+### O envio nunca derruba a operação
+
+`abrirRevisao` chama `enviarSemBloquear` **depois** do commit. Um SMTP fora do
+ar não desfaz a revisão nem interrompe a varredura no meio: a falha vira a
+coluna `erro` da linha correspondente. Para ver o que não saiu:
+
+```sql
+SELECT created_at, tipo, destinatario, assunto, erro
+  FROM emails_enviados
+ WHERE erro IS NOT NULL
+ ORDER BY created_at DESC
+ LIMIT 50;
+```
+
+### Autenticação: OAuth2 app-only, não senha
+
+O envio usa SMTP autenticado por **OAuth2 no fluxo client credentials**.
+Usuário e senha foram descartados de propósito: a Microsoft desativa o Basic
+Auth do SMTP AUTH por padrão nos tenants existentes no **fim de dezembro de
+2026**, com remoção definitiva anunciada para 2027.
+
+App-only é o fluxo certo aqui porque quem envia é um cron às 08h — não há
+usuário logado para consentir nem refresh token para renovar. A renovação é
+pedir outro token com o mesmo segredo, e `lib/email/smtp.ts` cuida disso com
+5 minutos de margem antes do vencimento.
+
+### Configuração do lado da Microsoft
+
+> **Os passos 4 e 5 não existem no portal do Azure.** São PowerShell no
+> Exchange Online, e sem eles o token é emitido normalmente mas o SMTP recusa
+> com `535 5.7.3` — uma falha que parece credencial errada e não é. É o erro
+> mais provável desta configuração.
+
+1. **Registrar o app** no Entra ID (Azure portal → Microsoft Entra ID →
+   Registros de aplicativo → Novo registro). Escolha "Somente neste diretório
+   organizacional". Anote **Directory (tenant) ID** e **Application (client) ID**.
+
+2. **Criar um segredo**: no app → Certificados e segredos → Novo segredo do
+   cliente. Copie o **Valor** (não o *ID do segredo* — o portal mostra os dois
+   lado a lado e o valor some quando você sai da página). Ele **expira em no
+   máximo 24 meses**: anote a data, porque o vencimento derruba o envio sem
+   aviso prévio.
+
+3. **Permissão + consentimento**: app → Permissões de API → Adicionar →
+   **APIs que minha organização usa** → *Office 365 Exchange Online* →
+   **Permissões de aplicativo** → `SMTP.SendAsApp`. Depois clique em
+   **Conceder consentimento do administrador**. Precisa ser permissão de
+   *aplicativo*, não *delegada*.
+
+4. **Registrar o service principal no Exchange Online**:
+
+   > Conecte com uma conta **Administrador do Exchange**, não com a
+   > `gestaodeprojetos@`. A caixa de envio é o *alvo* da permissão (passo 5),
+   > não a identidade que a concede: conectado como ela, o cmdlet nem aparece
+   > na sessão.
+
+   ```powershell
+   Install-Module -Name ExchangeOnlineManagement
+   Connect-ExchangeOnline -UserPrincipalName <admin@pernambucoconstrutora.com.br>
+
+   New-ServicePrincipal -AppId <CLIENT_ID> -ObjectId <OBJECT_ID> -DisplayName "Gestao das Obras - envio de e-mail"
+   ```
+
+   > Rode cada comando em UMA linha. Continuação com crase quebra ao colar
+   > (basta um espaço depois dela) e o PowerShell manda o bloco inteiro como
+   > se fosse um único argumento — o erro que sai fala de "usuário não
+   > encontrado", escondendo que o problema foi a colagem.
+
+   O `OBJECT_ID` é o da **Enterprise Application** (Entra ID → Aplicativos
+   empresariais → o app → Visão geral), **não** o da página de Registros de
+   aplicativo. São dois objetos diferentes que o portal rotula igual, como
+   "ID do Objeto". Usar o do registro falha com
+   `AADServicePrincipalNotFound`. Para não depender do portal:
+
+   ```powershell
+   Install-Module Microsoft.Graph.Applications -Scope CurrentUser -Force
+   Connect-MgGraph -Scopes "Application.Read.All"
+
+   # O `Id` retornado é o OBJECT_ID correto.
+   Get-MgServicePrincipal -Filter "appId eq '<CLIENT_ID>'" |
+     Format-List DisplayName, Id, AppId
+   ```
+
+   Se não retornar nada, a Enterprise Application não existe — sinal de que
+   o consentimento do admin (passo 3) não foi concedido, já que é ele que
+   materializa o service principal. Confira o status verde "Concedido para
+   \<organização\>" em Permissões de API, ou crie na mão com
+   `New-MgServicePrincipal -AppId "<CLIENT_ID>"`.
+
+   > **Se aparecer "New-ServicePrincipal não foi reconhecido":** no Exchange
+   > Online PowerShell V3, cmdlets que o usuário não tem permissão de rodar
+   > **não são carregados na sessão** — falta de RBAC aparece como "não
+   > reconhecido", não como "acesso negado". Diagnostique na mesma janela:
+   >
+   > ```powershell
+   > Get-ConnectionInformation                 # vazio = não conectado AQUI
+   > Get-Command New-ServicePrincipal          # existe na sessão?
+   > Get-Module ExchangeOnlineManagement -ListAvailable | Select Version
+   > ```
+   >
+   > Em ordem de probabilidade: (a) a sessão caiu — ela expira com ~1h de
+   > inatividade e vale só para a janela onde `Connect-ExchangeOnline` rodou;
+   > (b) falta o papel **Role Management** (incluso em *Administrador do
+   > Exchange* / *Organization Management*) — ser Administrador Global do
+   > M365 **não basta**; (c) módulo anterior à 3.x.
+
+5. **Dar acesso à caixa**:
+
+   ```powershell
+   Get-ServicePrincipal | Format-List DisplayName, ObjectId, AppId, Identity
+   Add-MailboxPermission -Identity "gestaodeprojetos@pernambucoconstrutora.com.br" -User <OBJECT_ID> -AccessRights FullAccess
+   ```
+
+   O `Get-ServicePrincipal` da primeira linha faz duas coisas: confirma que o
+   passo 4 completou (lista vazia = o service principal não existe, e não há a
+   quem conceder) e devolve o `ObjectId` para a segunda linha. Localize a
+   entrada pelo **AppId**, que bate com o `AZURE_CLIENT_ID` — não pelo
+   `DisplayName`, que costuma vir vazio e faz o `-Identity` não encontrar nada.
+
+   Confira que aplicou:
+
+   ```powershell
+   Get-MailboxPermission -Identity "gestaodeprojetos@pernambucoconstrutora.com.br" | Where-Object { $_.User -like "*<OBJECT_ID>*" }
+   ```
+
+### Configuração da aplicação
+
+1. Aplique a migration `drizzle/0016_emails_enviados.sql` seguindo o
+   `drizzle/RUNBOOK.md` (valide com `validate_0016.sql`).
+2. Preencha `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`,
+   `SMTP_FROM` e `CRON_SECRET` — ver `.env.example`.
+3. Valide antes de publicar. O script testa as duas metades separadamente
+   (Entra emite o token? o Exchange aceita o token?), que é o que distingue
+   segredo errado de permissão de mailbox faltando:
+
+   ```bash
+   node scripts/testar-email.mjs                    # token + autenticação
+   node scripts/testar-email.mjs voce@dominio.com   # + envio real
+   ```
+4. Publique as mesmas variáveis nas variáveis de ambiente da Vercel.
+
+### Limite de envio
+
+O client submission do Exchange Online corta em **30 mensagens por minuto** e
+10.000 destinatários por dia. O transporter usa teto de 20/minuto: estourar o
+limite devolve `4.7.x` no meio da rajada, e o aviso das 08h sairia pela
+metade — com os itens do fim da fila silenciosamente sem e-mail.
+
+### O agendador é trocável
+
+A lógica vive numa rota HTTP protegida por `CRON_SECRET`, não num agendador
+embutido — a hospedagem pode mudar sem tocar no código.
+
+**Hoje (Vercel):** `vercel.json` agenda `0 11 * * *`. **11:00 UTC = 08:00 em
+Recife** — Pernambuco não tem horário de verão, então o offset é fixo em -3 e
+não há ajuste sazonal a fazer. O Vercel Cron manda o header
+`Authorization: Bearer $CRON_SECRET` sozinho, bastando a variável existir.
+
+> No plano **Hobby** o cron roda 1x/dia em horário **aproximado** dentro da hora
+> (pode sair 08h40). Horário exato exige o plano **Pro**.
+
+**Depois (VPS):** apague `vercel.json` e agende no crontab do sistema — em
+horário local, sem conversão:
+
+```cron
+0 8 * * *  curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://SEU-DOMINIO/api/cron/vencimentos
+```
+
+### Cobertura de e-mail
+
+`projetistas.email` é anulável. Projetista sem e-mail **não recebe nada** e o
+item nem entra na varredura. Antes de confiar no aviso, confira quem está sem
+endereço:
+
+```sql
+SELECT nome, telefone FROM projetistas
+ WHERE nullif(btrim(email), '') IS NULL
+ ORDER BY nome;
+```
 
 ## Notas e limitações conhecidas
 

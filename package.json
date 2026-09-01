@@ -18,11 +18,13 @@
     "@neondatabase/serverless": "^0.10.4",
     "drizzle-orm": "^0.45.2",
     "next": "^16.2.12",
+    "nodemailer": "^6.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "dotenv": "^16.4.7",

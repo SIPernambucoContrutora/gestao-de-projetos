@@ -57,6 +57,14 @@ export const acaoHistoricoEnum = pgEnum("acao_historico", [
   "exclusao",
 ]);
 
+// Qual e-mail automático foi disparado ao projetista (ver emailsEnviados).
+//   'vencimento_hoje' → aviso diário das 08h, do prazo que vence hoje
+//   'revisao_aberta'  → disparado por abrirRevisao, com a solicitação no corpo
+export const tipoEmailEnum = pgEnum("tipo_email", [
+  "vencimento_hoje",
+  "revisao_aberta",
+]);
+
 /* ------------------------------------------------------------------ *
  * empreendimentos
  * ------------------------------------------------------------------ */
@@ -362,3 +370,51 @@ export type StatusItem = (typeof statusItemEnum.enumValues)[number];
 export type PapelUsuario = (typeof papelUsuarioEnum.enumValues)[number];
 export type PrioridadeItem = (typeof prioridadeItemEnum.enumValues)[number];
 export type AcaoHistorico = (typeof acaoHistoricoEnum.enumValues)[number];
+
+/* ------------------------------------------------------------------ *
+ * emails_enviados  (ver drizzle/0016_emails_enviados.sql)
+ *
+ * Uma linha por e-mail que o sistema TENTOU mandar ao projetista. O
+ * índice único (tipo, item_id, referencia) é a trava de idempotência:
+ * o cron diário pode reexecutar sem duplicar o aviso na caixa de
+ * ninguém. `erro` preserva a falha do SMTP — sem ele, um servidor de
+ * e-mail fora do ar seria silêncio, e silêncio aqui é indistinguível
+ * de "não havia nada para avisar".
+ * ------------------------------------------------------------------ */
+
+export const emailsEnviados = pgTable(
+  "emails_enviados",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tipo: tipoEmailEnum("tipo").notNull(),
+    itemId: uuid("item_id").references(() => itensProjeto.id, {
+      onDelete: "set null",
+    }),
+    // O que torna o envio único dentro do tipo: a data do prazo para
+    // 'vencimento_hoje', o id da revisão para 'revisao_aberta'.
+    referencia: text("referencia").notNull(),
+    destinatario: text("destinatario").notNull(),
+    assunto: text("assunto").notNull(),
+    projetistaNome: text("projetista_nome"),
+    empreendimentoNome: text("empreendimento_nome"),
+    itemNumero: integer("item_numero"),
+    // NULL enquanto pendente; preenchido quando o SMTP aceita a mensagem.
+    enviadoEm: timestamp("enviado_em", { withTimezone: true }),
+    erro: text("erro"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("emails_enviados_tipo_item_referencia_key").on(
+      t.tipo,
+      t.itemId,
+      t.referencia,
+    ),
+    index("emails_enviados_created_at_idx").on(t.createdAt),
+  ],
+);
+
+export type EmailEnviado = typeof emailsEnviados.$inferSelect;
+export type NovoEmailEnviado = typeof emailsEnviados.$inferInsert;
+export type TipoEmail = (typeof tipoEmailEnum.enumValues)[number];

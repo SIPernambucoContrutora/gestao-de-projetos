@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   disciplinas,
   empreendimentos,
+  etapas,
   historicoAlteracoes,
   itensProjeto,
   projetistas,
@@ -13,6 +14,8 @@ import {
 } from "@/db/schema";
 import type { RevisaoItem } from "@/db/schema";
 import { requireEscrita, requireUser } from "@/lib/auth/session";
+import { enviarSemBloquear } from "@/lib/email/enviar";
+import { mensagemRevisao } from "@/lib/email/templates";
 import { hojeISORecife, rotuloRevisao } from "@/lib/ui/status";
 
 /* ------------------------------------------------------------------ *
@@ -62,12 +65,14 @@ export async function abrirRevisao(itemId: string, solicitacao: string): Promise
       item: itensProjeto,
       empNome: empreendimentos.nome,
       discNome: disciplinas.nome,
+      etapaNome: etapas.nome,
       projetistaNome: projetistas.nome,
       projetistaEmail: projetistas.email,
     })
     .from(itensProjeto)
     .innerJoin(empreendimentos, eq(empreendimentos.id, itensProjeto.empreendimentoId))
     .innerJoin(disciplinas, eq(disciplinas.id, itensProjeto.disciplinaId))
+    .innerJoin(etapas, eq(etapas.id, itensProjeto.etapaId))
     .leftJoin(projetistas, eq(projetistas.id, itensProjeto.projetistaId))
     .where(eq(itensProjeto.id, itemId))
     .limit(1);
@@ -158,6 +163,40 @@ export async function abrirRevisao(itemId: string, solicitacao: string): Promise
     db.update(itensProjeto).set(zerado).where(eq(itensProjeto.id, itemId)),
     db.insert(historicoAlteracoes).values(diffs.map((d) => ({ ...contexto, ...d }))),
   ]);
+
+  // Avisa o projetista, com o texto da solicitação no corpo.
+  //
+  // DEPOIS do batch, e sem await no caminho de erro: a revisão já está
+  // commitada e não pode ser desfeita porque o SMTP caiu. enviarSemBloquear
+  // engole a falha e a registra em emails_enviados — ver lib/email/enviar.ts.
+  //
+  // O e-mail vai para o endereço CONGELADO na revisão, não para o cadastro
+  // atual do projetista: a solicitação foi feita a quem era o responsável
+  // agora, e é esse o destinatário certo mesmo que o cadastro mude depois.
+  await enviarSemBloquear({
+    tipo: "revisao_aberta",
+    itemId,
+    // O id da revisão é único por natureza: uma solicitação, um e-mail.
+    referencia: novoId,
+    destinatario: atual.projetistaEmail,
+    mensagem: mensagemRevisao(
+      {
+        projetistaNome: atual.projetistaNome ?? "projetista",
+        empreendimento: atual.empNome,
+        disciplina: atual.discNome,
+        etapa: atual.etapaNome,
+        itemNumero: item.item,
+        planta: item.planta,
+      },
+      rotuloRevisao(numero),
+      texto,
+    ),
+    contexto: {
+      projetistaNome: atual.projetistaNome,
+      empreendimentoNome: atual.empNome,
+      itemNumero: item.item,
+    },
+  });
 
   // O dashboard consolidado ("/") lista os itens de TODOS os empreendimentos:
   // sem revalidá-lo, ele segue servindo a versão em cache depois da edição.
