@@ -428,7 +428,7 @@ function ItemDrawer({
   return (
     <div>
       <div className="drawer-overlay" onClick={onClose} />
-      <aside className="drawer-panel">
+      <aside className="drawer-panel drawer-panel--wide">
         <div className="drawer-head">
           <div>
             <div className="drawer-head__eyebrow mono">

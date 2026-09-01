@@ -764,8 +764,9 @@ textarea.input {
   animation: dcSlideIn 160ms ease-out;
   z-index: 41;
 }
-/* Painel largo — usado no drawer do projetista, que mostra tabelas
-   (desempenho e atrasos) e fica ilegível na largura padrão. */
+/* Painel largo — drawer do projetista (tabelas de desempenho e atrasos)
+   e do item (campos, datas e histórico de revisões). Ambos ficam
+   ilegíveis na largura padrão de 460px. */
 .drawer-panel--wide {
   width: 860px;
 }
