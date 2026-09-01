@@ -88,14 +88,16 @@ export function mensagemVencimento(d: DadosItem): Mensagem {
   const identificacao = d.itemNumero ? `Item ${d.itemNumero}` : d.disciplina;
   const alvo = escopo(d);
 
-  const assunto = `[Gestão das Obras] Vence hoje: ${identificacao} — ${d.empreendimento}`;
+  const assunto = `[Gestão de Projetos] Vence hoje: ${identificacao} — ${d.empreendimento}`;
 
   const p = (conteudo: string) =>
     `<p style="margin:0 0 16px;line-height:1.6;color:#1f2937">${conteudo}</p>`;
 
   const html = moldura(
-    "Lembrete de prazo",
-    `${d.empreendimento} — vence em ${d.prazoBR}`,
+    // Mesma ordem do e-mail de revisão: o empreendimento situa o
+    // projetista de imediato, o tipo do aviso desce para a linha apagada.
+    d.empreendimento,
+    `Lembrete de prazo — vence em ${d.prazoBR}`,
     [
       p(`Olá, ${escaparHtml(d.projetistaNome)},`),
       p(
@@ -136,7 +138,7 @@ export function mensagemRevisao(
 ): Mensagem {
   const identificacao = d.itemNumero ? `Item ${d.itemNumero}` : d.disciplina;
 
-  const assunto = `[Gestão das Obras] ${numeroRevisao} solicitada: ${identificacao} — ${d.empreendimento}`;
+  const assunto = `[Gestão de Projetos] ${numeroRevisao} solicitada: ${identificacao} — ${d.empreendimento}`;
 
   const tabela = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">
     ${linha("Empreendimento", d.empreendimento)}
@@ -148,10 +150,13 @@ export function mensagemRevisao(
   </table>`;
 
   const html = moldura(
-    `Solicitação de revisão — ${numeroRevisao}`,
+    // O empreendimento vem em cima e em destaque: é o que situa o
+    // projetista de imediato. O tipo do e-mail desce para a linha
+    // apagada — quem abriu já sabe que é uma revisão pelo assunto.
     d.empreendimento,
-    `<p style="margin:0 0 16px;line-height:1.6;color:#1f2937">Olá, ${escaparHtml(d.projetistaNome)}.</p>
-     <p style="margin:0 0 16px;line-height:1.6;color:#1f2937">Foi aberta uma revisão para o item abaixo.</p>
+    `Solicitação de revisão — ${numeroRevisao}`,
+    `<p style="margin:0 0 16px;line-height:1.6;color:#007481">Olá, ${escaparHtml(d.projetistaNome)}.</p>
+     <p style="margin:0 0 16px;line-height:1.6;color:#007481">Foi aberta uma revisão para o item abaixo.</p>
      ${tabela}
      <div style="border-left:3px solid ${ACCENT};background:#f9fafb;padding:12px 16px;margin:0 0 20px">
        <div style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">O que foi solicitado</div>
@@ -168,7 +173,6 @@ export function mensagemRevisao(
     `Empreendimento: ${d.empreendimento}`,
     `Disciplina: ${d.disciplina}`,
     `Etapa: ${d.etapa}`,
-    d.itemNumero ? `Item: ${d.itemNumero}` : null,
     d.planta ? `Planta: ${d.planta}` : null,
     "",
     "O que foi solicitado:",
