@@ -118,7 +118,7 @@ try {
   const info = await transporter.sendMail({
     from: `"${process.env.SMTP_FROM_NOME ?? "Gestão das Obras"}" <${caixa}>`,
     to: destino,
-    subject: "[Gestão das Obras] Teste de configuração de e-mail",
+    subject: "[Gestão de Projetos] Teste de configuração de e-mail",
     text:
       "Se você está lendo isto, o envio do painel Gestão das Obras está funcionando.\n\n" +
       "Mensagem gerada por scripts/testar-email.mjs.",

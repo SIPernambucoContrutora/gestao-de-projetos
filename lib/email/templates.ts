@@ -8,7 +8,7 @@
  * é `style` inline e tabela — feio de ler, mas é o que chega inteiro.
  */
 
-const TEAL = "#064a52";
+const TEAL = "#007481";
 const ACCENT = "#0099A5";
 
 /**
@@ -48,7 +48,7 @@ function moldura(titulo: string, chamada: string, miolo: string): string {
     </td></tr>
     <tr><td style="padding:24px">${miolo}</td></tr>
     <tr><td style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;line-height:1.5">
-      Mensagem automática do painel Gestão das Obras — Pernambuco Construtora.<br>
+      Mensagem automática do painel Gestão de Projetos — Pernambuco Construtora.<br>
       Em caso de dúvida, responda este e-mail.
     </td></tr>
   </table>
@@ -144,7 +144,6 @@ export function mensagemRevisao(
     ${linha("Empreendimento", d.empreendimento)}
     ${linha("Disciplina", d.disciplina)}
     ${linha("Etapa", d.etapa)}
-    ${d.itemNumero ? linha("Item", String(d.itemNumero)) : ""}
     ${d.planta ? linha("Planta", d.planta) : ""}
     ${linha("Revisão", numeroRevisao)}
   </table>`;
@@ -155,8 +154,8 @@ export function mensagemRevisao(
     // apagada — quem abriu já sabe que é uma revisão pelo assunto.
     d.empreendimento,
     `Solicitação de revisão — ${numeroRevisao}`,
-    `<p style="margin:0 0 16px;line-height:1.6;color:#007481">Olá, ${escaparHtml(d.projetistaNome)}.</p>
-     <p style="margin:0 0 16px;line-height:1.6;color:#007481">Foi aberta uma revisão para o item abaixo.</p>
+    `<p style="margin:0 0 16px;line-height:1.6;color:#1f2937">Olá, ${escaparHtml(d.projetistaNome)}.</p>
+     <p style="margin:0 0 16px;line-height:1.6;color:#1f2937">Foi aberta uma revisão para o item abaixo.</p>
      ${tabela}
      <div style="border-left:3px solid ${ACCENT};background:#f9fafb;padding:12px 16px;margin:0 0 20px">
        <div style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">O que foi solicitado</div>
