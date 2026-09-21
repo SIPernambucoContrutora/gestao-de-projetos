@@ -87,6 +87,7 @@ export const faseEmpreendimentoEnum = pgEnum("fase_empreendimento", [
   "em_estudo",
   "pre_lancamento",
   "aprovado",
+  "em_execucao",
   "executado",
 ]);
 
