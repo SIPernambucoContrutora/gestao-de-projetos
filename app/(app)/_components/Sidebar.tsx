@@ -5,11 +5,18 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
 
-type NavKey = "dashboard" | "empreendimentos" | "projetistas" | "historico" | "usuarios";
+type NavKey =
+  | "dashboard"
+  | "empreendimentos"
+  | "disciplinas"
+  | "projetistas"
+  | "historico"
+  | "usuarios";
 
 const NAV: { href: string; label: string; icon: NavKey; match: string }[] = [
   { href: "/", label: "Dashboard", icon: "dashboard", match: "/" },
   { href: "/empreendimentos", label: "Empreendimentos", icon: "empreendimentos", match: "/empreendimentos" },
+  { href: "/disciplinas", label: "Disciplinas", icon: "disciplinas", match: "/disciplinas" },
   { href: "/projetistas", label: "Projetistas", icon: "projetistas", match: "/projetistas" },
   { href: "/historico", label: "Histórico", icon: "historico", match: "/historico" },
   { href: "/usuarios", label: "Usuários", icon: "usuarios", match: "/usuarios" },
@@ -54,6 +61,15 @@ function NavIcon({ name }: { name: NavKey }) {
         <path d="M9.5 6.5 11.5 3.5 13.5 4.5 11.5 8" />
       </svg>
     );
+  if (name === "disciplinas")
+    return (
+      <svg {...common}>
+        <path d="M3 2.5h7l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1Z" />
+        <path d="M9.5 2.5v3h3" />
+        <line x1="4" y1="9" x2="10.5" y2="9" />
+        <line x1="4" y1="11.7" x2="10.5" y2="11.7" />
+      </svg>
+    );
   return (
     <svg {...common}>
       <circle cx="8" cy="5.5" r="2.8" />
@@ -91,7 +107,7 @@ export function Sidebar({ userName, userRole }: { userName: string; userRole: st
       <div className="sidebar__brand">
         {/* Logo servida de public/brand — img simples basta para um asset fixo. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/logo.png" alt="Gestão das Obras" className="sidebar__logo" />
+        <img src="/brand/logo.png" alt="Gestão de Projetos" className="sidebar__logo" />
         <div className="sidebar__brand-sub">Gestão de projetos</div>
       </div>
 

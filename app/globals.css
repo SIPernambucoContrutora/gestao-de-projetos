@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------ *
  * Design tokens + base — portados do protótipo estático (index.html).
- * O visual (teal #064a52 / accent #0099A5) é a identidade "Gestão das Obras".
+ * O visual (teal #064a52 / accent #0099A5) é a identidade "Gestão de Projetos".
  * ------------------------------------------------------------------ */
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
@@ -379,6 +379,15 @@ button {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+/* Linha própria dos filtros do dashboard, abaixo do título/botão — os
+   selects não competem por espaço com o link de Indicadores. */
+.dash-filtros-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
 }
 
 /* ------------------------------------------------------------------ *
@@ -1238,4 +1247,377 @@ textarea.input {
   font-size: 11.5px;
   color: #7ba3a8;
   margin-top: 2px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Indicadores (gráficos)
+ *
+ * O painel de indicadores é outra leitura dos MESMOS dados do dashboard:
+ * herda os tokens (--panel, --line, --label) para as duas telas não
+ * parecerem produtos diferentes. As cores das séries NÃO ficam aqui —
+ * são dados, e vivem em lib/ui/charts.ts.
+ * ------------------------------------------------------------------ */
+.ind-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 0 0;
+}
+.ind-filtros__sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 2px;
+}
+.ind-filtros__limpar {
+  margin-left: auto;
+}
+
+/* Combobox de seleção múltipla: botão + painel de opções ancorado. */
+.ind-multi {
+  position: relative;
+}
+.ind-multi__btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  background: #fff;
+  color: #3f6166;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ind-multi__btn--on {
+  border-color: var(--accent);
+  color: var(--accent-d);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.ind-multi__contador {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 17px;
+  text-align: center;
+}
+.ind-multi__painel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 230px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(14, 52, 56, 0.13);
+}
+.ind-multi__opcao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font-size: 12.5px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.ind-multi__opcao:hover {
+  background: var(--panel-head);
+}
+.ind-multi__check {
+  width: 14px;
+  flex: none;
+  color: var(--accent-d);
+  font-weight: 700;
+}
+.ind-multi__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* Abas das telas de indicadores. */
+.ind-abas {
+  display: flex;
+  gap: 2px;
+  margin-top: 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: -21px;
+}
+.ind-aba {
+  padding: 9px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ind-aba--on {
+  color: var(--accent-d);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+.ind-body {
+  padding: 20px 28px 48px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+/* Larguras dos cards na grade de 12 colunas. */
+.ind-col-4 { grid-column: span 4; }
+.ind-col-6 { grid-column: span 6; }
+.ind-col-8 { grid-column: span 8; }
+.ind-col-12 { grid-column: span 12; }
+@media (max-width: 1200px) {
+  .ind-col-4, .ind-col-6, .ind-col-8 { grid-column: span 12; }
+}
+
+.ind-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 16px 18px 12px;
+  min-width: 0;
+}
+.ind-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.ind-card__titulo {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ind-card__pergunta {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.ind-card__tabela-btn {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: #fff;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ind-card__tabela-btn:hover {
+  color: var(--accent-d);
+  border-color: var(--accent);
+}
+.ind-card__vazio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+}
+.ind-card__nota {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
+/* Tooltip: o valor lidera, o nome da série segue. */
+.ind-tip {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(14, 52, 56, 0.14);
+  padding: 9px 11px;
+  font-size: 12px;
+  min-width: 130px;
+}
+.ind-tip__titulo {
+  font-size: 11px;
+  color: var(--label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.ind-tip__linha {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+}
+.ind-tip__key {
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  flex: none;
+}
+.ind-tip__valor {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ind-tip__nome {
+  color: var(--muted);
+}
+
+/* Legenda própria: swatch + rótulo, texto sempre em tinta de texto. */
+.ind-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 10px;
+}
+.ind-legenda__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11.5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ind-legenda__item--off {
+  opacity: 0.4;
+}
+.ind-legenda__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* Grade de calor (vencimentos, disciplina × etapa). */
+.ind-heat {
+  overflow-x: auto;
+}
+.ind-heat__grade {
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 11.5px;
+}
+.ind-heat__grade th {
+  font-weight: 500;
+  color: var(--label);
+  font-size: 10.5px;
+  text-align: left;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.ind-heat__cel {
+  width: 34px;
+  height: 26px;
+  border-radius: 3px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+.ind-heat__rot {
+  color: var(--muted);
+  white-space: nowrap;
+  padding-right: 6px;
+  text-align: right;
+  font-size: 11px;
+}
+
+/* Tabela compacta dentro de um card (scorecard e a "ver tabela"). */
+.ind-tab {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.ind-tab th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.ind-tab td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+}
+.ind-tab td.ta-right,
+.ind-tab th.ta-right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ind-tab tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ind-tab__wrap {
+  max-height: 340px;
+  overflow: auto;
+}
+
+/* Barra de proporção usada dentro de células de tabela. */
+.ind-mini-barra {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+  min-width: 54px;
+}
+.ind-mini-barra__fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* Painel de itens (drill-through) da tela de Indicadores. Fica um degrau
+   ABAIXO do drawer de edição padrão (z 40/41): abrir um item por cima dele
+   precisa empilhar, não substituir — clicar numa linha não fecha a lista.
+   Mesma especificidade de .drawer-overlay/.drawer-panel; a ordem no
+   arquivo (depois deles) é o que decide o empate. */
+.drawer-overlay--list {
+  z-index: 38;
+}
+.drawer-panel--list {
+  z-index: 39;
+}
+
+/* Contador "N de M itens" virou botão: é a porta de entrada do painel de
+   itens quando ninguém clicou em gráfico nenhum. */
+.ind-ver-itens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  background: #fff;
+  color: var(--label);
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.ind-ver-itens:hover {
+  border-color: var(--accent);
+  color: var(--accent-d);
 }

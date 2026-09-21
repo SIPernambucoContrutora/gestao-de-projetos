@@ -270,7 +270,11 @@ function toDraft(it: ItemComRefs): Draft {
   };
 }
 
-function ItemDrawer({
+// Exportado: a tela de Indicadores reabre este mesmo drawer para editar um
+// item a partir do painel de "itens filtrados" — mesma edição, mesma
+// Server Action, sem duplicar formulário. Só depende do id do item, não
+// do empreendimento que o lista (ver comentário de LinhaIndicador).
+export function ItemDrawer({
   item,
   etapas,
   projetistas,

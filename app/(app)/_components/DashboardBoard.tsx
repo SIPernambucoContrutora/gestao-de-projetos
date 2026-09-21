@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ItemDashboard } from "@/lib/actions/itens";
 import type { StatusItem } from "@/db/schema";
@@ -95,25 +96,44 @@ export function DashboardBoard({ itens, hojeISO }: { itens: ItemDashboard[]; hoj
             <h1 className="page-head__title">Dashboard</h1>
             <p className="page-head__sub">Visão consolidada dos itens de projeto</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span className="dash-filtro-label">Empreendimento</span>
-              <select className="input" value={fEmp} onChange={(e) => setFEmp(e.target.value)} style={{ minWidth: "220px" }}>
-                <option value="all">Todos os empreendimentos</option>
-                {empOptions.map((e) => (
-                  <option key={e.id} value={e.id}>{e.nome}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span className="dash-filtro-label">Disciplina</span>
-              <select className="input" value={fDisc} onChange={(e) => setFDisc(e.target.value)} style={{ minWidth: "200px" }}>
-                <option value="all">Todas as disciplinas</option>
-                {discOptions.map((d) => (
-                  <option key={d.id} value={d.id}>{d.nome}</option>
-                ))}
-              </select>
-            </div>
+          {/* Porta de entrada dos gráficos. O dashboard é a tela de EXECUTAR
+              (a tabela, item a item); Indicadores é a de DECIDIR — leva o
+              empreendimento selecionado aqui junto no recorte. Fica ao lado
+              do título, na mesma linha — os filtros abaixo são outra coisa
+              (escopo da tabela), não companhia do botão. */}
+          <Link
+            href={fEmp === "all" ? "/indicadores" : `/indicadores?emp=${fEmp}`}
+            className="btn-primary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none", flex: "none" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <line x1="2" y1="14" x2="14" y2="14" />
+              <rect x="3" y="8.5" width="2.6" height="5.5" />
+              <rect x="6.9" y="4.5" width="2.6" height="9.5" />
+              <rect x="10.8" y="6.8" width="2.6" height="7.2" />
+            </svg>
+            Indicadores
+          </Link>
+        </div>
+
+        <div className="dash-filtros-row">
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span className="dash-filtro-label">Empreendimento</span>
+            <select className="input" value={fEmp} onChange={(e) => setFEmp(e.target.value)} style={{ minWidth: "220px" }}>
+              <option value="all">Todos os empreendimentos</option>
+              {empOptions.map((e) => (
+                <option key={e.id} value={e.id}>{e.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span className="dash-filtro-label">Disciplina</span>
+            <select className="input" value={fDisc} onChange={(e) => setFDisc(e.target.value)} style={{ minWidth: "200px" }}>
+              <option value="all">Todas as disciplinas</option>
+              {discOptions.map((d) => (
+                <option key={d.id} value={d.id}>{d.nome}</option>
+              ))}
+            </select>
           </div>
         </div>
 

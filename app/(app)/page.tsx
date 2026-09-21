@@ -1,9 +1,10 @@
 import { listTodosItens } from "@/lib/actions/itens";
 import type { ItemDashboard } from "@/lib/actions/itens";
 import { AuthError } from "@/lib/auth/session";
+import { hojeISORecife } from "@/lib/ui/status";
 import { DashboardBoard } from "./_components/DashboardBoard";
 
-export const metadata = { title: "Dashboard — Gestão das Obras" };
+export const metadata = { title: "Dashboard — Gestão de Projetos" };
 
 export default async function DashboardPage() {
   let itens: ItemDashboard[] = [];
@@ -27,6 +28,8 @@ export default async function DashboardPage() {
     );
   }
 
-  const hojeISO = new Date().toISOString().slice(0, 10);
-  return <DashboardBoard itens={itens} hojeISO={hojeISO} />;
+  // No fuso de Recife, não em UTC: entre 21h e a meia-noite, toISOString()
+  // já estaria no dia seguinte e o painel marcaria itens como atrasados um
+  // dia antes da hora. O resto do app usa esta mesma referência.
+  return <DashboardBoard itens={itens} hojeISO={hojeISORecife()} />;
 }

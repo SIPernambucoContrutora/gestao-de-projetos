@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gestão das Obras — Gestão de projetos técnicos",
+  title: "Gestão de Projetos — Gestão de projetos técnicos",
   description: "Painel de acompanhamento de projetos técnicos de empreendimentos.",
 };
 

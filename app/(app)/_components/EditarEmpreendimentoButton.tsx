@@ -3,25 +3,37 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FaseEmpreendimento, TipoEmpreendimento } from "@/db/schema";
-import { createEmpreendimento } from "@/lib/actions/empreendimentos";
+import { updateEmpreendimento } from "@/lib/actions/empreendimentos";
 import { FASES_EMPREENDIMENTO, TIPOS_EMPREENDIMENTO } from "./empreendimentoLabels";
 
 type Form = { nome: string; tipo: TipoEmpreendimento | ""; fase: FaseEmpreendimento | "" };
 
-const FORM_VAZIO: Form = { nome: "", tipo: "", fase: "" };
-
-export function NovoEmpreendimentoButton() {
+export function EditarEmpreendimentoButton({
+  id,
+  nome,
+  tipo,
+  fase,
+}: {
+  id: string;
+  nome: string;
+  tipo: TipoEmpreendimento | null;
+  fase: FaseEmpreendimento | null;
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [form, setForm] = useState<Form>(FORM_VAZIO);
+  const [form, setForm] = useState<Form>({ nome, tipo: tipo ?? "", fase: fase ?? "" });
+
+  function abrir() {
+    setForm({ nome, tipo: tipo ?? "", fase: fase ?? "" });
+    setErro(null);
+    setAberto(true);
+  }
 
   function fechar() {
     if (salvando) return;
     setAberto(false);
-    setErro(null);
-    setForm(FORM_VAZIO);
   }
 
   async function salvar() {
@@ -31,12 +43,12 @@ export function NovoEmpreendimentoButton() {
     setSalvando(true);
     setErro(null);
     try {
-      await createEmpreendimento({ nome: form.nome, tipo: form.tipo, fase: form.fase });
+      await updateEmpreendimento(id, { nome: form.nome, tipo: form.tipo, fase: form.fase });
       router.refresh();
       setSalvando(false);
-      fechar();
+      setAberto(false);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Falha ao criar.");
+      setErro(e instanceof Error ? e.message : "Falha ao salvar.");
       setSalvando(false);
     }
   }
@@ -46,8 +58,8 @@ export function NovoEmpreendimentoButton() {
 
   return (
     <>
-      <button type="button" className="btn-primary" onClick={() => setAberto(true)}>
-        Novo empreendimento
+      <button type="button" className="btn-soft" onClick={abrir}>
+        Editar
       </button>
 
       {aberto && (
@@ -55,7 +67,7 @@ export function NovoEmpreendimentoButton() {
           <div className="modal-overlay" onClick={fechar} />
           <div className="modal" role="dialog" aria-modal="true">
             <div className="modal-head">
-              <h2 className="modal-title">Novo empreendimento</h2>
+              <h2 className="modal-title">Editar empreendimento</h2>
               <button type="button" className="drawer-close" onClick={fechar} aria-label="Fechar">
                 ×
               </button>
@@ -102,7 +114,7 @@ export function NovoEmpreendimentoButton() {
                 Cancelar
               </button>
               <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>
-                {salvando ? "Criando…" : "Criar"}
+                {salvando ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>

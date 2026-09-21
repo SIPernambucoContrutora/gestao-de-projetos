@@ -4,7 +4,7 @@ import type { UsuarioListado } from "@/lib/actions/usuarios";
 import { UsuariosTable } from "../_components/UsuariosTable";
 import { NovoUsuarioButton } from "../_components/NovoUsuarioButton";
 
-export const metadata = { title: "Usuários — Gestão das Obras" };
+export const metadata = { title: "Usuários — Gestão de Projetos" };
 
 export default async function UsuariosPage() {
   let ctx = null;

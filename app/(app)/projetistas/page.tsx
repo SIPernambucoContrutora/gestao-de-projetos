@@ -1,10 +1,11 @@
 import { listProjetistas } from "@/lib/actions/projetistas";
 import type { Projetista } from "@/db/schema";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
+import { hojeISORecife } from "@/lib/ui/status";
 import { NovoProjetistaButton } from "../_components/NovoProjetistaButton";
 import { ProjetistasTable } from "../_components/ProjetistasTable";
 
-export const metadata = { title: "Projetistas — Gestão das Obras" };
+export const metadata = { title: "Projetistas — Gestão de Projetos" };
 
 export default async function ProjetistasPage() {
   let projetistas: Projetista[] = [];
@@ -47,7 +48,7 @@ export default async function ProjetistasPage() {
           <ProjetistasTable
             projetistas={projetistas}
             podeEditar={podeEditar}
-            hojeISO={new Date().toISOString().slice(0, 10)}
+            hojeISO={hojeISORecife()}
           />
         </section>
       )}

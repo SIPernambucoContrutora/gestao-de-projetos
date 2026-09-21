@@ -4,7 +4,7 @@ import type { HistoricoGlobal } from "@/lib/actions/historico";
 import { AuthError } from "@/lib/auth/session";
 import { formatDataHora, rotuloCampo } from "@/lib/ui/status";
 
-export const metadata = { title: "Histórico — Gestão das Obras" };
+export const metadata = { title: "Histórico — Gestão de Projetos" };
 
 const TAG = {
   criacao: { label: "Criação", cls: "hist-tag--criacao" },
