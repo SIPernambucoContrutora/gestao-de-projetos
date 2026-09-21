@@ -410,6 +410,72 @@ button {
 }
 
 /* ------------------------------------------------------------------ *
+ * Quadrantes de fase (tela de Empreendimentos)
+ * ------------------------------------------------------------------ */
+.fase-grid {
+  padding: 20px 28px 48px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+.fase-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 28px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+.fase-card:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.fase-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.fase-card__count {
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.fase-card__label {
+  font-size: 13px;
+  color: var(--label);
+}
+.fase-card--categorizar {
+  border-color: #e3b3ab;
+}
+.fase-card--categorizar .fase-card__count {
+  color: #93281f;
+}
+
+.emp-fase-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 28px 0;
+}
+.emp-fase-head__titulo {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.emp-fase-head__sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ *
  * Cards de empreendimento
  * ------------------------------------------------------------------ */
 .emp-grid {
@@ -1540,6 +1606,144 @@ textarea.input {
   padding-right: 6px;
   text-align: right;
   font-size: 11px;
+}
+
+/* Ciclo de vida — uma barra por item, do início ao prazo/entrega. */
+.gantt {
+  --gantt-label-w: 260px;
+  position: relative;
+  padding-top: 2px;
+}
+.gantt__row {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  /* Fica acima do overlay de grade — ver .gantt__overlay. */
+  z-index: 1;
+}
+.gantt__label-col {
+  flex: 0 0 var(--gantt-label-w);
+  min-width: 0;
+}
+.gantt__track-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+.gantt__head {
+  padding-bottom: 10px;
+  margin-bottom: 6px;
+}
+.gantt__head-ticks {
+  position: relative;
+  height: 28px;
+}
+.gantt__tick {
+  position: absolute;
+  top: 0;
+  display: inline-block;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.gantt__tick--hoje {
+  color: #8a3b23;
+  font-weight: 600;
+  text-align: center;
+}
+.gantt__label {
+  padding: 8px 14px 8px 2px;
+  color: var(--ink);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+.gantt__track {
+  min-height: 34px;
+  border-radius: 5px;
+  transition: background-color 0.12s ease;
+}
+.gantt__row--item {
+  cursor: pointer;
+  border-radius: 5px;
+}
+.gantt__row--item:hover,
+.gantt__row--item:focus-visible {
+  background: var(--panel-head);
+}
+.gantt__row--item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.gantt__row--item:hover .gantt__label {
+  color: var(--accent-d);
+}
+.gantt__row--item:hover .gantt__bar {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 2px rgba(14, 52, 56, 0.1);
+}
+.gantt__bar {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  min-width: 6px;
+  border-radius: 4px;
+  transition: filter 0.12s ease, box-shadow 0.12s ease;
+}
+.gantt__row--total .gantt__label {
+  font-weight: 600;
+}
+.gantt__bar--total {
+  top: 5px;
+  bottom: 5px;
+  min-width: 0;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  padding: 0 10px;
+  border-radius: 5px;
+}
+/* Grade e linha de "hoje" — atrás das linhas (z-index 1 acima), então
+ * nunca cortam as barras ao meio. */
+.gantt__overlay {
+  position: absolute;
+  left: var(--gantt-label-w);
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.gantt__gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-soft);
+}
+.gantt__hoje-linha {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed #8a3b23;
+  opacity: 0.65;
+}
+@media (max-width: 720px) {
+  .gantt {
+    --gantt-label-w: 150px;
+  }
 }
 
 /* Tabela compacta dentro de um card (scorecard e a "ver tabela"). */

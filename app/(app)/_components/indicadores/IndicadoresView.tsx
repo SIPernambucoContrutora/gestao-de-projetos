@@ -112,7 +112,8 @@ const ROTULO_FASE: Record<string, string> = {
   em_estudo: "Em estudo",
   pre_lancamento: "Pré-lançamento",
   aprovado: "Aprovado",
-  executado: "Executado",
+  em_execucao: "Em execução",
+  executado: "Pronto",
 };
 const ROTULO_CATEGORIA: Record<string, string> = { obra: "Obra", lancamento: "Lançamento" };
 const ROTULO_PRIORIDADE: Record<string, string> = { baixa: "Baixa", media: "Média", alta: "Alta" };

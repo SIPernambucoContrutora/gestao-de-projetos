@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { listEmpreendimentos } from "@/lib/actions/empreendimentos";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
 import { NovoEmpreendimentoButton } from "../_components/NovoEmpreendimentoButton";
-import { ROTULO_FASE, ROTULO_TIPO } from "../_components/empreendimentoLabels";
+import { EmpreendimentosView } from "../_components/EmpreendimentosView";
 
 export const metadata = { title: "Empreendimentos — Gestão de Projetos" };
 
@@ -45,61 +44,8 @@ export default async function EmpreendimentosPage() {
           Nenhum empreendimento cadastrado ainda. Clique em “Novo empreendimento” para começar.
         </div>
       ) : (
-        <section className="emp-grid">
-          {emps.map((e) => (
-            <EmpreendimentoCard key={e.id} emp={e} />
-          ))}
-        </section>
+        <EmpreendimentosView emps={emps} />
       )}
     </div>
-  );
-}
-
-function EmpreendimentoCard({ emp }: { emp: EmpreendimentoComProgresso }) {
-  return (
-    <Link href={`/empreendimentos/${emp.id}`} className="card-item">
-      <div className="card-item__top">
-        <div className="card-item__name">{emp.nome}</div>
-      </div>
-      <div className="card-item__badges">
-        {emp.precisaCategorizar ? (
-          <span className="badge badge--vermelho">
-            <span className="badge__dot" />
-            Falta categorizar
-          </span>
-        ) : (
-          <>
-            <span className="badge badge--azul">
-              <span className="badge__dot" />
-              {ROTULO_TIPO[emp.tipo!]}
-            </span>
-            <span className="badge badge--cinza">
-              <span className="badge__dot" />
-              {ROTULO_FASE[emp.fase!]}
-            </span>
-          </>
-        )}
-      </div>
-      <div className="card-item__progress-row">
-        <span>
-          {emp.itensFinalizados}/{emp.totalItens} itens finalizados
-        </span>
-        <span className="card-item__pct">{emp.progresso}%</span>
-      </div>
-      <div className="progress-track">
-        <div className="progress-fill" style={{ width: `${emp.progresso}%` }} />
-      </div>
-
-      <div className="card-item__badges">
-        <span className="badge badge--ambar">
-          <span className="badge__dot" />
-          {emp.itensEmAndamento} em andamento
-        </span>
-        <span className={`badge badge--${emp.itensAtrasados > 0 ? "vermelho" : "cinza"}`}>
-          <span className="badge__dot" />
-          {emp.itensAtrasados} atrasados
-        </span>
-      </div>
-    </Link>
   );
 }

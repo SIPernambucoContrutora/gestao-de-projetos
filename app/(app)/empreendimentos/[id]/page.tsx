@@ -81,17 +81,22 @@ export default async function EmpreendimentoDetalhePage({
           <div className="page-head__crumb" style={{ marginBottom: 0 }}>
             <Link href="/empreendimentos">Empreendimentos</Link> / Detalhe
           </div>
-          {podeEditar && (
-            <div style={{ display: "flex", gap: "8px" }}>
-              <EditarEmpreendimentoButton
-                id={emp.id}
-                nome={emp.nome}
-                tipo={emp.tipo}
-                fase={emp.fase}
-              />
-              <ExcluirEmpreendimentoButton id={emp.id} nome={emp.nome} />
-            </div>
-          )}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <Link href={`/empreendimentos/${emp.id}/ciclo-de-vida`} className="btn-soft">
+              Ciclo de Vida
+            </Link>
+            {podeEditar && (
+              <>
+                <EditarEmpreendimentoButton
+                  id={emp.id}
+                  nome={emp.nome}
+                  tipo={emp.tipo}
+                  fase={emp.fase}
+                />
+                <ExcluirEmpreendimentoButton id={emp.id} nome={emp.nome} />
+              </>
+            )}
+          </div>
         </div>
         <div className="detail-head" style={{ marginTop: "12px" }}>
           <div style={{ minWidth: 0 }}>
