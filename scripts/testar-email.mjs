@@ -116,11 +116,11 @@ console.log(`[3/3] Enviando para ${destino}...`);
 
 try {
   const info = await transporter.sendMail({
-    from: `"${process.env.SMTP_FROM_NOME ?? "Gestão das Obras"}" <${caixa}>`,
+    from: `"${process.env.SMTP_FROM_NOME ?? "Gestão de Projetos"}" <${caixa}>`,
     to: destino,
     subject: "[Gestão de Projetos] Teste de configuração de e-mail",
     text:
-      "Se você está lendo isto, o envio do painel Gestão das Obras está funcionando.\n\n" +
+      "Se você está lendo isto, o envio do painel Gestão de Projetos está funcionando.\n\n" +
       "Mensagem gerada por scripts/testar-email.mjs.",
   });
   console.log(`      OK — messageId: ${info.messageId}`);

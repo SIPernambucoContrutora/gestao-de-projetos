@@ -10,10 +10,13 @@ import type { UsuarioBasico } from "@/lib/actions/usuarios";
 import type { Disciplina, Etapa, Projetista } from "@/db/schema";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
+import { hojeISORecife } from "@/lib/ui/status";
 import { ItensBoard } from "../../_components/ItensBoard";
 import { ExcluirEmpreendimentoButton } from "../../_components/ExcluirEmpreendimentoButton";
+import { EditarEmpreendimentoButton } from "../../_components/EditarEmpreendimentoButton";
+import { ROTULO_FASE, ROTULO_TIPO } from "../../_components/empreendimentoLabels";
 
-export const metadata = { title: "Quadro de itens — Gestão das Obras" };
+export const metadata = { title: "Quadro de itens — Gestão de Projetos" };
 
 export default async function EmpreendimentoDetalhePage({
   params,
@@ -69,7 +72,7 @@ export default async function EmpreendimentoDetalhePage({
 
   if (!emp) notFound();
 
-  const hojeISO = new Date().toISOString().slice(0, 10);
+  const hojeISO = hojeISORecife();
 
   return (
     <div>
@@ -78,14 +81,32 @@ export default async function EmpreendimentoDetalhePage({
           <div className="page-head__crumb" style={{ marginBottom: 0 }}>
             <Link href="/empreendimentos">Empreendimentos</Link> / Detalhe
           </div>
-          {podeEditar && <ExcluirEmpreendimentoButton id={emp.id} nome={emp.nome} />}
+          {podeEditar && (
+            <div style={{ display: "flex", gap: "8px" }}>
+              <EditarEmpreendimentoButton
+                id={emp.id}
+                nome={emp.nome}
+                tipo={emp.tipo}
+                fase={emp.fase}
+              />
+              <ExcluirEmpreendimentoButton id={emp.id} nome={emp.nome} />
+            </div>
+          )}
         </div>
         <div className="detail-head" style={{ marginTop: "12px" }}>
           <div style={{ minWidth: 0 }}>
             <h1 className="page-head__title">{emp.nome}</h1>
             <div className="detail-head__meta">
               <Campo rotulo="Itens" valor={String(emp.totalItens)} mono />
+              <Campo rotulo="Tipo" valor={emp.tipo ? ROTULO_TIPO[emp.tipo] : "—"} />
+              <Campo rotulo="Fase" valor={emp.fase ? ROTULO_FASE[emp.fase] : "—"} />
             </div>
+            {emp.precisaCategorizar && (
+              <span className="badge badge--vermelho" style={{ marginTop: "8px" }}>
+                <span className="badge__dot" />
+                Falta categorizar este empreendimento
+              </span>
+            )}
           </div>
           <div className="detail-head__progress">
             <div className="detail-head__progress-row">

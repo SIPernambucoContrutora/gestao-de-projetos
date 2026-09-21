@@ -3,8 +3,9 @@ import { listEmpreendimentos } from "@/lib/actions/empreendimentos";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
 import { NovoEmpreendimentoButton } from "../_components/NovoEmpreendimentoButton";
+import { ROTULO_FASE, ROTULO_TIPO } from "../_components/empreendimentoLabels";
 
-export const metadata = { title: "Empreendimentos — Gestão das Obras" };
+export const metadata = { title: "Empreendimentos — Gestão de Projetos" };
 
 export default async function EmpreendimentosPage() {
   let emps: EmpreendimentoComProgresso[] = [];
@@ -59,6 +60,25 @@ function EmpreendimentoCard({ emp }: { emp: EmpreendimentoComProgresso }) {
     <Link href={`/empreendimentos/${emp.id}`} className="card-item">
       <div className="card-item__top">
         <div className="card-item__name">{emp.nome}</div>
+      </div>
+      <div className="card-item__badges">
+        {emp.precisaCategorizar ? (
+          <span className="badge badge--vermelho">
+            <span className="badge__dot" />
+            Falta categorizar
+          </span>
+        ) : (
+          <>
+            <span className="badge badge--azul">
+              <span className="badge__dot" />
+              {ROTULO_TIPO[emp.tipo!]}
+            </span>
+            <span className="badge badge--cinza">
+              <span className="badge__dot" />
+              {ROTULO_FASE[emp.fase!]}
+            </span>
+          </>
+        )}
       </div>
       <div className="card-item__progress-row">
         <span>

@@ -286,7 +286,7 @@ function App() {
       <div style={{ minHeight: "100vh", width: "100%", background: "#eef6f7", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
         <div style={{ width: "100%", maxWidth: "372px" }}>
           <div style={{ textAlign: "center", marginBottom: "26px" }}>
-            <div style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>GESTÃO DAS OBRAS</div>
+            <div style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>Gestão de Projetos</div>
             <div style={{ fontSize: "12px", color: "#5f8b90", marginTop: "4px" }}>Acompanhamento de projetos técnicos</div>
           </div>
           <form onSubmit={function (e) { e.preventDefault(); setState({ logged: true, screen: "dashboard" }); }} style={{ background: "#fff", border: "1px solid #d3e4e6", borderRadius: "8px", padding: "26px 26px 24px" }}>
@@ -439,7 +439,7 @@ function App() {
       {/* ---------- sidebar ---------- */}
       <aside style={{ width: "228px", flex: "0 0 228px", background: "#064a52", borderRight: "1px solid #064a52", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }}>
         <div style={{ padding: "22px 20px 18px", borderBottom: "1px solid rgba(255,255,255,0.14)" }}>
-          <div style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff" }}>GESTÃO DAS OBRAS</div>
+          <div style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#ffffff" }}>Gestão de Projetos</div>
           <div style={{ fontSize: "11px", color: "#8fc9cf", marginTop: "3px" }}>Gestão de projetos técnicos</div>
         </div>
 

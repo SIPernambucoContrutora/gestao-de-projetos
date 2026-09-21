@@ -37,7 +37,7 @@ export function LoginForm() {
     <div className="login-wrap">
       <div className="login-inner">
         <div className="login-brand">
-          <img src="/brand/logo-login.png" alt="Gestão das Obras" className="login__logo" />
+          <img src="/brand/logo-login.png" alt="Gestão de Projetos" className="login__logo" />
           <div className="login-brand__title">GESTÃO DE PROJETOS</div>
           <div className="login-brand__sub">Acompanhamento de projetos técnicos</div>
         </div>

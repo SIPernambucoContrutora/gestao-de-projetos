@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { empreendimentos, historicoAlteracoes, itensProjeto } from "@/db/schema";
-import type { Empreendimento } from "@/db/schema";
+import type { Empreendimento, FaseEmpreendimento, TipoEmpreendimento } from "@/db/schema";
 import { requireEscrita, requireUser } from "@/lib/auth/session";
 
 /** Normaliza um valor para comparação/armazenamento como texto. */
@@ -15,6 +15,8 @@ function toText(v: unknown): string | null {
 
 export type EmpreendimentoInput = {
   nome: string;
+  tipo: TipoEmpreendimento;
+  fase: FaseEmpreendimento;
 };
 
 export type EmpreendimentoComProgresso = Empreendimento & {
@@ -23,6 +25,8 @@ export type EmpreendimentoComProgresso = Empreendimento & {
   itensEmAndamento: number; // em andamento e dentro do prazo
   itensAtrasados: number; // não entregue (sem prazo realizado) e com prazo vencido
   progresso: number; // 0..100
+  // Cadastro anterior ao tipo/fase (ver drizzle/0018) — a tela cobra o preenchimento.
+  precisaCategorizar: boolean;
 };
 
 /**
@@ -36,6 +40,8 @@ export async function listEmpreendimentos(): Promise<EmpreendimentoComProgresso[
     .select({
       id: empreendimentos.id,
       nome: empreendimentos.nome,
+      tipo: empreendimentos.tipo,
+      fase: empreendimentos.fase,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -65,6 +71,7 @@ export async function listEmpreendimentos(): Promise<EmpreendimentoComProgresso[
   return rows.map((r) => ({
     ...r,
     progresso: r.totalItens > 0 ? Math.round((r.itensFinalizados / r.totalItens) * 100) : 0,
+    precisaCategorizar: !r.tipo || !r.fase,
   }));
 }
 
@@ -78,6 +85,8 @@ export async function getEmpreendimento(
     .select({
       id: empreendimentos.id,
       nome: empreendimentos.nome,
+      tipo: empreendimentos.tipo,
+      fase: empreendimentos.fase,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -105,6 +114,7 @@ export async function getEmpreendimento(
   return {
     ...r,
     progresso: r.totalItens > 0 ? Math.round((r.itensFinalizados / r.totalItens) * 100) : 0,
+    precisaCategorizar: !r.tipo || !r.fase,
   };
 }
 
@@ -113,13 +123,15 @@ export async function createEmpreendimento(input: EmpreendimentoInput): Promise<
 
   const nome = input.nome?.trim();
   if (!nome) throw new Error("Nome do empreendimento é obrigatório.");
+  if (!input.tipo) throw new Error("Tipo do empreendimento é obrigatório.");
+  if (!input.fase) throw new Error("Fase do empreendimento é obrigatória.");
 
   const novoId = crypto.randomUUID();
 
   const [inseridos] = await db.batch([
     db
       .insert(empreendimentos)
-      .values({ id: novoId, nome })
+      .values({ id: novoId, nome, tipo: input.tipo, fase: input.fase })
       .returning(),
     db.insert(historicoAlteracoes).values({
       empreendimentoId: novoId,
@@ -137,6 +149,8 @@ export async function createEmpreendimento(input: EmpreendimentoInput): Promise<
 // Campos editáveis + rótulo usado no histórico.
 const CAMPOS_EMP = {
   nome: "nome",
+  tipo: "tipo",
+  fase: "fase",
 } as const;
 type CampoEmp = keyof typeof CAMPOS_EMP;
 
@@ -152,6 +166,14 @@ export async function updateEmpreendimento(
     const nome = patch.nome?.trim();
     if (!nome) throw new Error("Nome do empreendimento não pode ser vazio.");
     novos.nome = nome;
+  }
+  if (patch.tipo !== undefined) {
+    if (!patch.tipo) throw new Error("Tipo do empreendimento é obrigatório.");
+    novos.tipo = patch.tipo;
+  }
+  if (patch.fase !== undefined) {
+    if (!patch.fase) throw new Error("Fase do empreendimento é obrigatória.");
+    novos.fase = patch.fase;
   }
   if (Object.keys(novos).length === 0) throw new Error("Nada para atualizar.");
 

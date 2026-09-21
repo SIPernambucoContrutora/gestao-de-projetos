@@ -44,7 +44,7 @@ export function caixaRemetente(): string {
 
 /** Remetente exibido nas mensagens. */
 export function remetente(): string {
-  const nome = process.env.SMTP_FROM_NOME ?? "Gestão das Obras";
+  const nome = process.env.SMTP_FROM_NOME ?? "Gestão de Projetos";
   return `"${nome}" <${caixaRemetente()}>`;
 }
 

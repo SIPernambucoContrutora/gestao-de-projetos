@@ -1,4 +1,4 @@
-# Gestão das Obras
+# Gestão de Projetos
 
 Painel para acompanhamento de projetos técnicos de empreendimentos (obras) —
 empreendimentos, disciplinas, etapas, prazos, desvios e histórico de alterações,

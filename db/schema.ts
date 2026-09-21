@@ -65,6 +65,31 @@ export const tipoEmailEnum = pgEnum("tipo_email", [
   "revisao_aberta",
 ]);
 
+// Categoria da disciplina: se ela pertence ao fluxo de Obra ou de Lançamento.
+// Nulo nas disciplinas que ainda não foram categorizadas (cadastro anterior a
+// este campo) — a tela de Disciplinas cobra o preenchimento.
+export const categoriaDisciplinaEnum = pgEnum("categoria_disciplina", [
+  "obra",
+  "lancamento",
+]);
+
+// Tipo do empreendimento — escolha obrigatória para empreendimentos novos
+// (ver createEmpreendimento). Nulo apenas nos cadastros anteriores a este
+// campo, que a tela de Empreendimentos sinaliza para categorizar.
+export const tipoEmpreendimentoEnum = pgEnum("tipo_empreendimento", [
+  "prince",
+  "praia",
+]);
+
+// Fase do empreendimento — mesma regra do tipo: obrigatória para novos
+// cadastros, nula (a categorizar) nos existentes.
+export const faseEmpreendimentoEnum = pgEnum("fase_empreendimento", [
+  "em_estudo",
+  "pre_lancamento",
+  "aprovado",
+  "executado",
+]);
+
 /* ------------------------------------------------------------------ *
  * empreendimentos
  * ------------------------------------------------------------------ */
@@ -72,6 +97,10 @@ export const tipoEmailEnum = pgEnum("tipo_email", [
 export const empreendimentos = pgTable("empreendimentos", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull(),
+  // Nulos apenas nos empreendimentos cadastrados antes deste campo — a tela
+  // de Empreendimentos cobra a categorização deles (ver EmpreendimentoComProgresso.precisaCategorizar).
+  tipo: tipoEmpreendimentoEnum("tipo"),
+  fase: faseEmpreendimentoEnum("fase"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -84,6 +113,7 @@ export const empreendimentos = pgTable("empreendimentos", {
 export const disciplinas = pgTable("disciplinas", {
   id: uuid("id").primaryKey().defaultRandom(),
   nome: text("nome").notNull().unique(),
+  categoria: categoriaDisciplinaEnum("categoria"),
 });
 
 /* ------------------------------------------------------------------ *
@@ -418,3 +448,6 @@ export const emailsEnviados = pgTable(
 export type EmailEnviado = typeof emailsEnviados.$inferSelect;
 export type NovoEmailEnviado = typeof emailsEnviados.$inferInsert;
 export type TipoEmail = (typeof tipoEmailEnum.enumValues)[number];
+export type CategoriaDisciplina = (typeof categoriaDisciplinaEnum.enumValues)[number];
+export type TipoEmpreendimento = (typeof tipoEmpreendimentoEnum.enumValues)[number];
+export type FaseEmpreendimento = (typeof faseEmpreendimentoEnum.enumValues)[number];
