@@ -159,13 +159,18 @@ export function Tip({ titulo, itens }: { titulo: string; itens: ItemTip[] }) {
 export function tooltipRecharts(
   formatar?: (valor: number, nome: string) => string,
   tituloDe?: (label: string) => string,
+  // Em pilhas de vários estados, série zerada é ruído — oculta. Em séries
+  // únicas (uma barra por categoria), 0 é informação: esconder faz uma
+  // semana sem entrega parecer bug (barra "sumida" sem explicação no tooltip).
+  ocultarZero = true,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function Conteudo({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     const itens: ItemTip[] = payload
-      // Séries zeradas viram ruído numa pilha de seis estados.
-      .filter((p: any) => p.value !== null && p.value !== undefined && p.value !== 0)
+      .filter(
+        (p: any) => p.value !== null && p.value !== undefined && (!ocultarZero || p.value !== 0),
+      )
       .map((p: any) => ({
         nome: String(p.name ?? ""),
         valor: formatar ? formatar(Number(p.value), String(p.name ?? "")) : String(p.value),

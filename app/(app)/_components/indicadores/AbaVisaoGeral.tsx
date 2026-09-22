@@ -186,6 +186,10 @@ export function AbaVisaoGeral({
     return { semanas: comMedia };
   }, [itens, hojeISO]);
 
+  // Vazão semanal pede menos categorias que o burn-up: 8 semanas cabem com
+  // espaço de sobra pra data embaixo de cada barra.
+  const entregasSemana = useMemo(() => serie.semanas.slice(-8), [serie.semanas]);
+
   /* ---------------- Aging dos atrasos ---------------- */
   const aging = useMemo(() => {
     const valores = itens
@@ -447,14 +451,14 @@ export function AbaVisaoGeral({
         titulo="Entregas por semana"
         pergunta="Qual é a vazão real da equipe, e ela está subindo ou caindo? Clique numa barra para ver as entregas."
         vazio={serie.semanas.length < 2 ? "Histórico ainda curto para uma série semanal." : null}
-        nota="A linha é a média móvel de 4 semanas — mesma unidade das barras."
+        nota="A linha é a média móvel de 4 semanas — mesma unidade das barras. Últimas 8 semanas."
         tabela={{
           colunas: [
             { chave: "semana", rotulo: "Semana" },
             { chave: "entregas", rotulo: "Entregas", numerica: true },
             { chave: "media", rotulo: "Média 4 sem.", numerica: true },
           ],
-          linhas: serie.semanas.map((s) => ({
+          linhas: entregasSemana.map((s) => ({
             semana: rotuloDiaMes(String(s.semana)),
             entregas: num(Number(s.naSemana)),
             media: num(Number(s.media), 1),
@@ -462,15 +466,16 @@ export function AbaVisaoGeral({
         }}
       >
         <ResponsiveContainer width="100%" height={230}>
-          <ComposedChart data={serie.semanas} margin={MARGEM}>
+          <ComposedChart data={entregasSemana} margin={MARGEM} barCategoryGap="30%">
             <CartesianGrid {...GRADE} />
-            <XAxis dataKey="semana" tickFormatter={(v) => rotuloDiaMes(String(v))} {...EIXO} minTickGap={24} />
+            <XAxis dataKey="semana" tickFormatter={(v) => rotuloDiaMes(String(v))} {...EIXO} interval={0} />
             <YAxis {...EIXO} width={30} allowDecimals={false} />
             <Tooltip
               cursor={{ fill: CHART.grade }}
               content={tooltipRecharts(
                 (v, nome) => (nome === "Média 4 semanas" ? num(v, 1) : `${num(v)} itens`),
                 (l) => `Semana de ${rotuloDiaMes(l)}`,
+                false,
               )}
             />
             <Bar
