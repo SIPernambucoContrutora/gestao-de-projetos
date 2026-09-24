@@ -3,19 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProjetista } from "@/lib/actions/projetistas";
+import { formatCnpj, isCnpjCompleto } from "@/lib/ui/cnpj";
 import { formatTelefone } from "@/lib/ui/telefone";
 
-type Form = { nome: string; telefone: string; email: string };
+type Form = { nome: string; telefone: string; email: string; cnpj: string };
 
 /** Cadastro de projetista. A edição acontece no drawer da tabela. */
 export function ProjetistaFormModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
-  const [form, setForm] = useState<Form>({ nome: "", telefone: "", email: "" });
+  const [form, setForm] = useState<Form>({ nome: "", telefone: "", email: "", cnpj: "" });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar() {
     if (!form.nome.trim()) return setErro("Informe o nome do projetista.");
+    if (!isCnpjCompleto(form.cnpj)) return setErro("Informe o CNPJ completo do projetista.");
     setSalvando(true);
     setErro(null);
     try {
@@ -23,6 +25,7 @@ export function ProjetistaFormModal({ onClose }: { onClose: () => void }) {
         nome: form.nome,
         telefone: form.telefone || null,
         email: form.email || null,
+        cnpj: form.cnpj,
       });
       router.refresh();
       setSalvando(false);
@@ -34,7 +37,12 @@ export function ProjetistaFormModal({ onClose }: { onClose: () => void }) {
   }
 
   const set = (campo: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valor = campo === "telefone" ? formatTelefone(e.target.value) : e.target.value;
+    const valor =
+      campo === "telefone"
+        ? formatTelefone(e.target.value)
+        : campo === "cnpj"
+          ? formatCnpj(e.target.value)
+          : e.target.value;
     setForm((f) => ({ ...f, [campo]: valor }));
   };
 
@@ -64,6 +72,16 @@ export function ProjetistaFormModal({ onClose }: { onClose: () => void }) {
               <input type="email" className="input" value={form.email} onChange={set("email")} placeholder="Ex.: joao@escritorio.com" />
             </label>
           </div>
+          <label className="field" style={{ marginTop: "12px" }}>
+            <span className="field__label">CNPJ *</span>
+            <input
+              className="input mono"
+              value={form.cnpj}
+              onChange={set("cnpj")}
+              inputMode="numeric"
+              placeholder="00.000.000/0000-00"
+            />
+          </label>
         </div>
 
         <div className="modal-foot">

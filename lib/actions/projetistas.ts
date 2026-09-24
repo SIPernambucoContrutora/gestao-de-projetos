@@ -13,12 +13,19 @@ import {
 } from "@/db/schema";
 import type { Projetista, StatusItem } from "@/db/schema";
 import { requireEscrita, requireUser } from "@/lib/auth/session";
+import { isCnpjCompleto } from "@/lib/ui/cnpj";
 import { hojeISORecife } from "@/lib/ui/status";
 
 export type ProjetistaInput = {
   nome: string;
   telefone?: string | null;
   email?: string | null;
+  cnpj?: string | null;
+};
+
+export type ProjetistaComFlag = Projetista & {
+  // Cadastro anterior à obrigatoriedade do CNPJ (ver drizzle/0020) — a tela cobra o preenchimento.
+  precisaPreencherCnpj: boolean;
 };
 
 /** Uma linha do histórico de desempenho: um item que o projetista assumiu. */
@@ -289,9 +296,10 @@ export async function listPainelProjetista(projetistaId: string): Promise<Painel
 }
 
 /** Projetistas cadastrados, em ordem alfabética. */
-export async function listProjetistas(): Promise<Projetista[]> {
+export async function listProjetistas(): Promise<ProjetistaComFlag[]> {
   await requireUser();
-  return db.select().from(projetistas).orderBy(asc(projetistas.nome));
+  const linhas = await db.select().from(projetistas).orderBy(asc(projetistas.nome));
+  return linhas.map((p) => ({ ...p, precisaPreencherCnpj: !p.cnpj }));
 }
 
 export async function createProjetista(input: ProjetistaInput): Promise<Projetista> {
@@ -300,12 +308,18 @@ export async function createProjetista(input: ProjetistaInput): Promise<Projetis
   const nome = input.nome?.trim();
   if (!nome) throw new Error("Nome do projetista é obrigatório.");
 
+  const cnpj = input.cnpj?.trim();
+  if (!cnpj || !isCnpjCompleto(cnpj)) {
+    throw new Error("CNPJ do projetista é obrigatório e deve estar completo.");
+  }
+
   const [inserido] = await db
     .insert(projetistas)
     .values({
       nome,
       telefone: input.telefone?.trim() || null,
       email: input.email?.trim() || null,
+      cnpj,
     })
     .returning();
 
@@ -327,6 +341,13 @@ export async function updateProjetista(
   }
   if (patch.telefone !== undefined) updateValues.telefone = patch.telefone?.trim() || null;
   if (patch.email !== undefined) updateValues.email = patch.email?.trim() || null;
+  if (patch.cnpj !== undefined) {
+    const cnpj = patch.cnpj?.trim();
+    if (!cnpj || !isCnpjCompleto(cnpj)) {
+      throw new Error("CNPJ do projetista é obrigatório e deve estar completo.");
+    }
+    updateValues.cnpj = cnpj;
+  }
 
   if (Object.keys(updateValues).length === 0) throw new Error("Nada para atualizar.");
 

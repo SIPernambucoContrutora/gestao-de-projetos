@@ -135,6 +135,8 @@ export const projetistas = pgTable("projetistas", {
   nome: text("nome").notNull(),
   telefone: text("telefone"),
   email: text("email"),
+  // Nullable: cadastros anteriores não têm CNPJ (ver drizzle/0020) — a tela cobra o preenchimento.
+  cnpj: text("cnpj"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
