@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Projetista } from "@/db/schema";
-import type { AtrasoProjetista, PainelProjetista } from "@/lib/actions/projetistas";
+import type { AtrasoProjetista, PainelProjetista, ProjetistaComFlag } from "@/lib/actions/projetistas";
 import {
   deleteProjetista,
   listPainelProjetista,
   updateProjetista,
 } from "@/lib/actions/projetistas";
+import { formatCnpj, isCnpjCompleto } from "@/lib/ui/cnpj";
 import type { StatusDerivado } from "@/lib/ui/status";
 import { derivarStatusProjetista, formatBR, parseISO } from "@/lib/ui/status";
 import { formatTelefone } from "@/lib/ui/telefone";
@@ -19,11 +19,11 @@ export function ProjetistasTable({
   podeEditar,
   hojeISO,
 }: {
-  projetistas: Projetista[];
+  projetistas: ProjetistaComFlag[];
   podeEditar: boolean;
   hojeISO: string;
 }) {
-  const [aberto, setAberto] = useState<Projetista | null>(null);
+  const [aberto, setAberto] = useState<ProjetistaComFlag | null>(null);
   const hoje = useMemo(() => parseISO(hojeISO) ?? new Date(), [hojeISO]);
 
   return (
@@ -35,6 +35,7 @@ export function ProjetistasTable({
               <th>Nome</th>
               <th>Telefone</th>
               <th>E-mail</th>
+              <th>CNPJ</th>
             </tr>
           </thead>
           <tbody>
@@ -43,6 +44,11 @@ export function ProjetistasTable({
                 <td className="td-strong">{p.nome}</td>
                 <td className="mono td-muted">{p.telefone ? formatTelefone(p.telefone) : "—"}</td>
                 <td className="td-muted">{p.email ?? "—"}</td>
+                <td className="mono td-muted">
+                  {p.cnpj ?? (
+                    <span className="tag-origem tag-origem--reincidencia">Preencher CNPJ</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -66,7 +72,7 @@ export function ProjetistasTable({
  * Drawer do projetista — cadastro + desempenho + histórico de atrasos
  * ------------------------------------------------------------------ */
 
-type Draft = { nome: string; telefone: string; email: string };
+type Draft = { nome: string; telefone: string; email: string; cnpj: string };
 
 function ProjetistaDrawer({
   projetista,
@@ -74,7 +80,7 @@ function ProjetistaDrawer({
   hoje,
   onClose,
 }: {
-  projetista: Projetista;
+  projetista: ProjetistaComFlag;
   podeEditar: boolean;
   hoje: Date;
   onClose: () => void;
@@ -85,6 +91,7 @@ function ProjetistaDrawer({
     // Formata na abertura: registros antigos podem estar sem máscara.
     telefone: formatTelefone(projetista.telefone ?? ""),
     email: projetista.email ?? "",
+    cnpj: formatCnpj(projetista.cnpj ?? ""),
   }));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -102,7 +109,12 @@ function ProjetistaDrawer({
   }, [projetista.id]);
 
   const set = (campo: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valor = campo === "telefone" ? formatTelefone(e.target.value) : e.target.value;
+    const valor =
+      campo === "telefone"
+        ? formatTelefone(e.target.value)
+        : campo === "cnpj"
+          ? formatCnpj(e.target.value)
+          : e.target.value;
     setDraft((d) => ({ ...d, [campo]: valor }));
   };
 
@@ -137,6 +149,7 @@ function ProjetistaDrawer({
 
   async function salvar() {
     if (!draft.nome.trim()) return setErro("Informe o nome do projetista.");
+    if (!isCnpjCompleto(draft.cnpj)) return setErro("Informe o CNPJ completo do projetista.");
     setSalvando(true);
     setErro(null);
     try {
@@ -144,6 +157,7 @@ function ProjetistaDrawer({
         nome: draft.nome,
         telefone: draft.telefone || null,
         email: draft.email || null,
+        cnpj: draft.cnpj,
       });
       router.refresh();
       onClose();
@@ -195,6 +209,13 @@ function ProjetistaDrawer({
             </div>
           )}
 
+          {podeEditar && projetista.precisaPreencherCnpj && (
+            <div className="drawer-note">
+              Este projetista ainda não tem CNPJ cadastrado. Preencha e salve para completar o
+              cadastro.
+            </div>
+          )}
+
           <label className="field">
             <span className="field__label">Nome do projetista *</span>
             <input className="input" value={draft.nome} onChange={set("nome")} disabled={!podeEditar} />
@@ -223,6 +244,18 @@ function ProjetistaDrawer({
               />
             </label>
           </div>
+
+          <label className="field" style={{ marginTop: "12px" }}>
+            <span className="field__label">CNPJ *</span>
+            <input
+              className="input mono"
+              value={draft.cnpj}
+              onChange={set("cnpj")}
+              inputMode="numeric"
+              placeholder="00.000.000/0000-00"
+              disabled={!podeEditar}
+            />
+          </label>
 
           <div className="drawer-derived">
             <div>

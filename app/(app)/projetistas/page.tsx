@@ -1,5 +1,5 @@
+import type { ProjetistaComFlag } from "@/lib/actions/projetistas";
 import { listProjetistas } from "@/lib/actions/projetistas";
-import type { Projetista } from "@/db/schema";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
 import { hojeISORecife } from "@/lib/ui/status";
 import { NovoProjetistaButton } from "../_components/NovoProjetistaButton";
@@ -8,7 +8,7 @@ import { ProjetistasTable } from "../_components/ProjetistasTable";
 export const metadata = { title: "Projetistas — Gestão de Projetos" };
 
 export default async function ProjetistasPage() {
-  let projetistas: Projetista[] = [];
+  let projetistas: ProjetistaComFlag[] = [];
   let podeEditar = false;
   let authNeeded = false;
 
