@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { empreendimentos, historicoAlteracoes, itensProjeto } from "@/db/schema";
 import type { Empreendimento, FaseEmpreendimento, TipoEmpreendimento } from "@/db/schema";
 import { requireEscrita, requireUser } from "@/lib/auth/session";
+import { faseTemAprovacao } from "@/lib/ui/aprovacao";
+import { hojeISORecife } from "@/lib/ui/status";
 
 /** Normaliza um valor para comparação/armazenamento como texto. */
 function toText(v: unknown): string | null {
@@ -17,7 +19,29 @@ export type EmpreendimentoInput = {
   nome: string;
   tipo: TipoEmpreendimento;
   fase: FaseEmpreendimento;
+  /** 'YYYY-MM-DD'. Ignorada (gravada nula) em 'em_estudo'; obrigatória em 'aprovado'. */
+  dataAprovacao: string | null;
 };
+
+/**
+ * A data de aprovação que deve ser gravada para esta fase. Voltar para
+ * "Em estudo" apaga a data: a aprovação anterior deixou de valer e a
+ * próxima será outra, com outro aviso de vencimento.
+ */
+function resolverDataAprovacao(
+  fase: FaseEmpreendimento | null,
+  data: string | null | undefined,
+): string | null {
+  if (!faseTemAprovacao(fase)) return null;
+  const valor = data?.trim() || null;
+  if (!valor) {
+    if (fase === "aprovado") throw new Error("Informe a data de aprovação.");
+    return null;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) throw new Error("Data de aprovação inválida.");
+  if (valor > hojeISORecife()) throw new Error("A data de aprovação não pode ser futura.");
+  return valor;
+}
 
 export type EmpreendimentoComProgresso = Empreendimento & {
   totalItens: number;
@@ -42,6 +66,7 @@ export async function listEmpreendimentos(): Promise<EmpreendimentoComProgresso[
       nome: empreendimentos.nome,
       tipo: empreendimentos.tipo,
       fase: empreendimentos.fase,
+      dataAprovacao: empreendimentos.dataAprovacao,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -87,6 +112,7 @@ export async function getEmpreendimento(
       nome: empreendimentos.nome,
       tipo: empreendimentos.tipo,
       fase: empreendimentos.fase,
+      dataAprovacao: empreendimentos.dataAprovacao,
       createdAt: empreendimentos.createdAt,
       totalItens: sql<number>`count(${itensProjeto.id})`.mapWith(Number),
       itensFinalizados: sql<number>`count(*) filter (where ${itensProjeto.status} = 'finalizado')`.mapWith(
@@ -125,13 +151,14 @@ export async function createEmpreendimento(input: EmpreendimentoInput): Promise<
   if (!nome) throw new Error("Nome do empreendimento é obrigatório.");
   if (!input.tipo) throw new Error("Tipo do empreendimento é obrigatório.");
   if (!input.fase) throw new Error("Fase do empreendimento é obrigatória.");
+  const dataAprovacao = resolverDataAprovacao(input.fase, input.dataAprovacao);
 
   const novoId = crypto.randomUUID();
 
   const [inseridos] = await db.batch([
     db
       .insert(empreendimentos)
-      .values({ id: novoId, nome, tipo: input.tipo, fase: input.fase })
+      .values({ id: novoId, nome, tipo: input.tipo, fase: input.fase, dataAprovacao })
       .returning(),
     db.insert(historicoAlteracoes).values({
       empreendimentoId: novoId,
@@ -151,6 +178,7 @@ const CAMPOS_EMP = {
   nome: "nome",
   tipo: "tipo",
   fase: "fase",
+  dataAprovacao: "data_aprovacao",
 } as const;
 type CampoEmp = keyof typeof CAMPOS_EMP;
 
@@ -159,6 +187,13 @@ export async function updateEmpreendimento(
   patch: Partial<EmpreendimentoInput>,
 ): Promise<Empreendimento> {
   const { user } = await requireEscrita();
+
+  const [atual] = await db
+    .select()
+    .from(empreendimentos)
+    .where(eq(empreendimentos.id, id))
+    .limit(1);
+  if (!atual) throw new Error("Empreendimento não encontrado.");
 
   // Normaliza os valores presentes no patch.
   const novos: Partial<Record<CampoEmp, string | null>> = {};
@@ -175,14 +210,14 @@ export async function updateEmpreendimento(
     if (!patch.fase) throw new Error("Fase do empreendimento é obrigatória.");
     novos.fase = patch.fase;
   }
+  // A data depende da fase final: mudar só a fase também pode apagá-la ou exigi-la.
+  if (patch.fase !== undefined || patch.dataAprovacao !== undefined) {
+    novos.dataAprovacao = resolverDataAprovacao(
+      patch.fase ?? atual.fase,
+      patch.dataAprovacao !== undefined ? patch.dataAprovacao : atual.dataAprovacao,
+    );
+  }
   if (Object.keys(novos).length === 0) throw new Error("Nada para atualizar.");
-
-  const [atual] = await db
-    .select()
-    .from(empreendimentos)
-    .where(eq(empreendimentos.id, id))
-    .limit(1);
-  if (!atual) throw new Error("Empreendimento não encontrado.");
 
   const updateValues: Record<string, unknown> = {};
   const diffs: { campo: string; valorAntigo: string | null; valorNovo: string | null }[] = [];

@@ -4,11 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FaseEmpreendimento, TipoEmpreendimento } from "@/db/schema";
 import { createEmpreendimento } from "@/lib/actions/empreendimentos";
+import { faseTemAprovacao } from "@/lib/ui/aprovacao";
+import { CampoDataAprovacao, dataAprovacaoAoMudarFase } from "./CampoDataAprovacao";
 import { FASES_EMPREENDIMENTO, TIPOS_EMPREENDIMENTO } from "./empreendimentoLabels";
 
-type Form = { nome: string; tipo: TipoEmpreendimento | ""; fase: FaseEmpreendimento | "" };
+type Form = {
+  nome: string;
+  tipo: TipoEmpreendimento | "";
+  fase: FaseEmpreendimento | "";
+  dataAprovacao: string;
+};
 
-const FORM_VAZIO: Form = { nome: "", tipo: "", fase: "" };
+const FORM_VAZIO: Form = { nome: "", tipo: "", fase: "", dataAprovacao: "" };
 
 export function NovoEmpreendimentoButton() {
   const router = useRouter();
@@ -28,10 +35,16 @@ export function NovoEmpreendimentoButton() {
     if (!form.nome.trim()) return setErro("Informe o nome do empreendimento.");
     if (!form.tipo) return setErro("Selecione o tipo do empreendimento.");
     if (!form.fase) return setErro("Selecione a fase do empreendimento.");
+    if (form.fase === "aprovado" && !form.dataAprovacao) return setErro("Informe a data de aprovação.");
     setSalvando(true);
     setErro(null);
     try {
-      await createEmpreendimento({ nome: form.nome, tipo: form.tipo, fase: form.fase });
+      await createEmpreendimento({
+        nome: form.nome,
+        tipo: form.tipo,
+        fase: form.fase,
+        dataAprovacao: faseTemAprovacao(form.fase) ? form.dataAprovacao : null,
+      });
       router.refresh();
       setSalvando(false);
       fechar();
@@ -43,6 +56,11 @@ export function NovoEmpreendimentoButton() {
 
   const set = (campo: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [campo]: e.target.value }));
+
+  const mudarFase = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const fase = e.target.value as Form["fase"];
+    setForm((f) => ({ ...f, fase, dataAprovacao: dataAprovacaoAoMudarFase(f.fase, fase, f.dataAprovacao) }));
+  };
 
   return (
     <>
@@ -85,7 +103,7 @@ export function NovoEmpreendimentoButton() {
               </label>
               <label className="field" style={{ marginTop: "12px" }}>
                 <span className="field__label">Fase *</span>
-                <select className="input" value={form.fase} onChange={set("fase")}>
+                <select className="input" value={form.fase} onChange={mudarFase}>
                   <option value="">— Selecione —</option>
                   {FASES_EMPREENDIMENTO.map((f) => (
                     <option key={f.valor} value={f.valor}>
@@ -94,6 +112,11 @@ export function NovoEmpreendimentoButton() {
                   ))}
                 </select>
               </label>
+              <CampoDataAprovacao
+                fase={form.fase}
+                valor={form.dataAprovacao}
+                onChange={(dataAprovacao) => setForm((f) => ({ ...f, dataAprovacao }))}
+              />
             </div>
 
             <div className="modal-foot">

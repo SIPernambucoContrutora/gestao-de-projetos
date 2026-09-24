@@ -5,10 +5,11 @@ export const TIPOS_EMPREENDIMENTO: { valor: TipoEmpreendimento; rotulo: string }
   { valor: "praia", rotulo: "Praia" },
 ];
 
+// Na ordem do fluxo: a aprovação na Prefeitura vem antes do pré-lançamento.
 export const FASES_EMPREENDIMENTO: { valor: FaseEmpreendimento; rotulo: string }[] = [
   { valor: "em_estudo", rotulo: "Em estudo" },
-  { valor: "pre_lancamento", rotulo: "Pré-lançamento" },
   { valor: "aprovado", rotulo: "Aprovado" },
+  { valor: "pre_lancamento", rotulo: "Pré-lançamento" },
   { valor: "em_execucao", rotulo: "Em execução" },
   { valor: "executado", rotulo: "Pronto" },
 ];

@@ -57,12 +57,15 @@ export const acaoHistoricoEnum = pgEnum("acao_historico", [
   "exclusao",
 ]);
 
-// Qual e-mail automático foi disparado ao projetista (ver emailsEnviados).
-//   'vencimento_hoje' → aviso diário das 08h, do prazo que vence hoje
-//   'revisao_aberta'  → disparado por abrirRevisao, com a solicitação no corpo
+// Qual e-mail automático foi disparado (ver emailsEnviados).
+//   'vencimento_hoje'    → aviso diário das 08h, do prazo que vence hoje
+//   'revisao_aberta'     → disparado por abrirRevisao, com a solicitação no corpo
+//   'aprovacao_vencendo' → aviso à equipe: a aprovação na Prefeitura de um
+//                          empreendimento ainda "Aprovado" completou 10 meses
 export const tipoEmailEnum = pgEnum("tipo_email", [
   "vencimento_hoje",
   "revisao_aberta",
+  "aprovacao_vencendo",
 ]);
 
 // Categoria da disciplina: se ela pertence ao fluxo de Obra ou de Lançamento.
@@ -102,6 +105,9 @@ export const empreendimentos = pgTable("empreendimentos", {
   // de Empreendimentos cobra a categorização deles (ver EmpreendimentoComProgresso.precisaCategorizar).
   tipo: tipoEmpreendimentoEnum("tipo"),
   fase: faseEmpreendimentoEnum("fase"),
+  // Aprovação na Prefeitura, válida por 1 ano. Sempre nula em 'em_estudo' e
+  // obrigatória em 'aprovado' (regras em lib/actions/empreendimentos.ts).
+  dataAprovacao: date("data_aprovacao"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -424,7 +430,9 @@ export const emailsEnviados = pgTable(
       onDelete: "set null",
     }),
     // O que torna o envio único dentro do tipo: a data do prazo para
-    // 'vencimento_hoje', o id da revisão para 'revisao_aberta'.
+    // 'vencimento_hoje', o id da revisão para 'revisao_aberta',
+    // "<empreendimento_id>:<data_aprovacao>" para 'aprovacao_vencendo'
+    // (sem item: item_id fica nulo).
     referencia: text("referencia").notNull(),
     destinatario: text("destinatario").notNull(),
     assunto: text("assunto").notNull(),

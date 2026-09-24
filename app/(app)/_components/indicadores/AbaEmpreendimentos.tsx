@@ -49,7 +49,7 @@ const ROTULO_FASE: Record<string, string> = {
   executado: "Pronto",
   "": "A categorizar",
 };
-const ORDEM_FASE = ["em_estudo", "pre_lancamento", "aprovado", "em_execucao", "executado", ""];
+const ORDEM_FASE = ["em_estudo", "aprovado", "pre_lancamento", "em_execucao", "executado", ""];
 
 const ROTULO_TIPO: Record<string, string> = {
   prince: "Prince",

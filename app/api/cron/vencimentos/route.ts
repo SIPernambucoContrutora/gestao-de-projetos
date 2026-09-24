@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { dispararAvisosDeAprovacao } from "@/lib/email/aprovacoes";
 import { dispararAvisosDeVencimento } from "@/lib/email/vencimentos";
 
 // nodemailer abre socket TCP: precisa do runtime Node, não do Edge.
@@ -11,7 +12,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Aviso diário de vencimento — chamado por um agendador EXTERNO.
+ * Avisos diários de vencimento — chamado por um agendador EXTERNO. Duas
+ * varreduras: prazos de itens (ao projetista) e aprovações de
+ * empreendimentos na Prefeitura (aos usuários com papel 'equipe').
  *
  * Ser uma rota HTTP em vez de um agendador embutido é deliberado: hoje
  * quem chama é o Vercel Cron (vercel.json), e na migração para a VPS
@@ -44,15 +47,26 @@ export async function GET(req: Request) {
     return Response.json({ erro: "Não autorizado." }, { status: 401 });
   }
 
+  // Em sequência (o transporter limita a taxa) e isoladas: uma varredura
+  // que quebra não pode impedir a outra de avisar.
+  const prazos = await executar("prazos", dispararAvisosDeVencimento);
+  const aprovacoes = await executar("aprovacoes", dispararAvisosDeAprovacao);
+
+  // 200 mesmo com falhas parciais de envio: o cron não deve reexecutar por
+  // causa de um endereço inválido — a idempotência tornaria o retry
+  // inócuo de qualquer forma, e o resumo já reporta o que falhou.
+  const ok = prazos.ok && aprovacoes.ok;
+  return Response.json({ ok, prazos, aprovacoes }, { status: ok ? 200 : 500 });
+}
+
+async function executar<T extends object>(
+  nome: string,
+  varredura: () => Promise<T>,
+): Promise<({ ok: true } & T) | { ok: false; erro: string }> {
   try {
-    const resumo = await dispararAvisosDeVencimento();
-    // 200 mesmo com falhas parciais: o cron não deve reexecutar por
-    // causa de um endereço inválido — a idempotência tornaria o retry
-    // inócuo de qualquer forma, e o resumo já reporta o que falhou.
-    return Response.json({ ok: true, ...resumo });
+    return { ok: true, ...(await varredura()) };
   } catch (e) {
-    const erro = e instanceof Error ? e.message : String(e);
-    console.error("[cron/vencimentos] falhou:", e);
-    return Response.json({ ok: false, erro }, { status: 500 });
+    console.error(`[cron/vencimentos] ${nome} falhou:`, e);
+    return { ok: false, erro: e instanceof Error ? e.message : String(e) };
   }
 }

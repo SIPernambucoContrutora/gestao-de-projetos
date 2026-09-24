@@ -38,7 +38,10 @@ function paragrafos(texto: string): string {
     .join("");
 }
 
-function moldura(titulo: string, chamada: string, miolo: string): string {
+const RODAPE_PADRAO =
+  "Mensagem automática do painel Gestão de Projetos — Pernambuco Construtora.<br>Em caso de dúvida, responda este e-mail.";
+
+function moldura(titulo: string, chamada: string, miolo: string, rodape = RODAPE_PADRAO): string {
   return `<!doctype html>
 <html lang="pt-BR"><body style="margin:0;padding:24px;background:#f3f4f6;font-family:Segoe UI,Arial,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">
@@ -48,8 +51,7 @@ function moldura(titulo: string, chamada: string, miolo: string): string {
     </td></tr>
     <tr><td style="padding:24px">${miolo}</td></tr>
     <tr><td style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;line-height:1.5">
-      Mensagem automática do painel Gestão de Projetos — Pernambuco Construtora.<br>
-      Em caso de dúvida, responda este e-mail.
+      ${rodape}
     </td></tr>
   </table>
 </body></html>`;
@@ -181,6 +183,69 @@ export function mensagemRevisao(
   ]
     .filter((l) => l !== null)
     .join("\n");
+
+  return { assunto, html, texto };
+}
+
+export type DadosAprovacao = {
+  empreendimento: string;
+  dataAprovacaoBR: string;
+  vencimentoBR: string;
+  diasRestantes: number;
+};
+
+/** Aviso à equipe: a aprovação na Prefeitura vence em ~60 dias. */
+export function mensagemAprovacaoVencendo(d: DadosAprovacao): Mensagem {
+  const assunto = `[Gestão de Projetos] Aprovação vence em ${d.vencimentoBR}: ${d.empreendimento}`;
+  // O número real, não "60" fixo: 10 meses dão de 59 a 62 dias conforme os
+  // meses, e um aviso atrasado (cron parado, data lançada retroativa) tem menos.
+  const prazo = `${d.diasRestantes} ${d.diasRestantes === 1 ? "dia" : "dias"}`;
+
+  const p = (conteudo: string) =>
+    `<p style="margin:0 0 16px;line-height:1.6;color:#1f2937">${conteudo}</p>`;
+
+  const tabela = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">
+    ${linha("Projeto", d.empreendimento)}
+    ${linha("Data de aprovação", d.dataAprovacaoBR)}
+    ${linha("Data de vencimento", d.vencimentoBR)}
+    ${linha("Prazo restante", prazo)}
+  </table>`;
+
+  const html = moldura(
+    d.empreendimento,
+    `Vencimento da aprovação na Prefeitura — ${d.vencimentoBR}`,
+    [
+      p(
+        `Este é um aviso automático para informar que o projeto abaixo, aprovado junto à Prefeitura, possui vencimento previsto para <strong>${escaparHtml(d.vencimentoBR)}</strong>.`,
+      ),
+      tabela,
+      p(
+        "Recomendamos que a equipe responsável verifique a situação do projeto e, caso necessário, adote as providências pertinentes antes do término da validade da aprovação.",
+      ),
+      p(
+        "Este e-mail é enviado automaticamente com 60 dias de antecedência ao vencimento, como forma de auxiliar no acompanhamento dos prazos dos projetos.",
+      ),
+      `<p style="margin:24px 0 0;line-height:1.6;color:#1f2937">Atenciosamente,<br><strong>Coordenação de projetos</strong></p>`,
+    ].join(""),
+    "Mensagem automática — favor não responder a este e-mail.",
+  );
+
+  const texto = [
+    `Este é um aviso automático para informar que o projeto abaixo, aprovado junto à Prefeitura, possui vencimento previsto para ${d.vencimentoBR}.`,
+    "",
+    `Projeto: ${d.empreendimento}`,
+    `Data de aprovação: ${d.dataAprovacaoBR}`,
+    `Data de vencimento: ${d.vencimentoBR}`,
+    `Prazo restante: ${prazo}`,
+    "",
+    "Recomendamos que a equipe responsável verifique a situação do projeto e, caso necessário, adote as providências pertinentes antes do término da validade da aprovação.",
+    "",
+    "Este e-mail é enviado automaticamente com 60 dias de antecedência ao vencimento, como forma de auxiliar no acompanhamento dos prazos dos projetos.",
+    "",
+    "Atenciosamente,",
+    "Coordenação de projetos",
+    "Mensagem automática — favor não responder a este e-mail.",
+  ].join("\n");
 
   return { assunto, html, texto };
 }

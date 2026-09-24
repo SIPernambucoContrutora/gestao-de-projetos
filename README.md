@@ -224,7 +224,11 @@ usuário": nome, e-mail, senha e papel) — o cadastro público fica bloqueado.
 
 Schema da aplicação (`db/schema.ts`), no schema `public`:
 
-- **`empreendimentos`** — `id`, `nome`, `created_at`.
+- **`empreendimentos`** — `id`, `nome`, `tipo`, `fase` (fluxo: Em estudo →
+  Aprovado → Pré-lançamento → Em execução → Pronto), `data_aprovacao`
+  (aprovação na Prefeitura, válida por 1 ano — sempre nula em "Em estudo",
+  obrigatória em "Aprovado"; voltar para "Em estudo" apaga a data),
+  `created_at`.
 - **`disciplinas`** — `id`, `nome` (único). Ex.: Arquitetura, Estrutura, …
 - **`etapas`** — `id`, `nome` (único). Ex.: Estudo preliminar, Anteprojeto, …
 - **`itens_projeto`** — `id`, `empreendimento_id` (FK, `ON DELETE CASCADE`),
@@ -346,7 +350,12 @@ Ordem: `0000_init` → `0001_papel_historico` → `0002_meta_dias_text` →
 `0005_projetistas_revisao_item` → `0006_backfill_historico_nomes` →
 `0007_status_em_analise` → `0008_enviado_autodoc` → `0009_status_cancelado` →
 `0010_remove_responsavel_empreendimento` → `0011_pendente_sem_previsto` →
-`0012_prioridade_item` → `0013_revisoes_item` → `seed_listas`.
+`0012_prioridade_item` → `0013_revisoes_item` → `0014_status_derivado` →
+`0015_ajustes_pos_analise` → `0016_emails_enviados` →
+`0017_categoria_disciplina` → `0018_tipo_fase_empreendimento` →
+`0019_fase_em_execucao` → `0020_projetistas_cnpj` →
+`0021_data_aprovacao_empreendimento` → `0022_tipo_email_aprovacao` →
+`seed_listas`.
 
 ---
 
@@ -373,6 +382,7 @@ Dois disparos, ambos para o e-mail cadastrado do projetista, saindo de
 |---|---|---|
 | `vencimento_hoje` | Todo dia às 08h (Recife), para itens cujo prazo vigente vence hoje | Ficha do item + prazo |
 | `revisao_aberta` | No `abrirRevisao` (botão "Nova revisão") | O texto digitado na solicitação |
+| `aprovacao_vencendo` | Todo dia às 08h, para empreendimentos "Aprovado" há 10+ meses (vai para os usuários com papel `equipe`, não para o projetista) | Projeto, datas de aprovação/vencimento e prazo restante |
 
 **Prazo vigente** = `prazo_reprogramado ?? prazo_previsto` — a mesma regra de
 `derivarStatus`. Reprogramar move o aviso junto. Ficam de fora itens já
@@ -567,6 +577,26 @@ horário local, sem conversão:
 ```cron
 0 8 * * *  curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://SEU-DOMINIO/api/cron/vencimentos
 ```
+
+### Aviso de vencimento da aprovação (equipe)
+
+A mesma chamada diária do cron roda uma segunda varredura
+(`lib/email/aprovacoes.ts`): empreendimentos ainda em **"Aprovado"** cuja
+`data_aprovacao` já completou **10 meses** recebem o aviso de que a aprovação
+na Prefeitura vence em 1 ano (ex.: aprovado em 01/01/2026 → aviso a partir de
+01/11/2026, vencimento em 01/01/2027). O "Prazo restante" mostra os dias reais
+(10 meses dão de 59 a 62 dias, conforme os meses).
+
+- **Destinatários:** todos os usuários com papel **`equipe`** (tela Usuários),
+  numa única mensagem. Admins e leitura não recebem. Sem ninguém da equipe
+  com e-mail, nada sai e o resumo do cron conta `semDestinatario`.
+- **Uma vez por aprovação:** `referencia = "<empreendimento_id>:<data_aprovacao>"`,
+  com `item_id` nulo. Se o empreendimento voltar a "Em estudo" e for aprovado
+  de novo, a nova data gera um novo aviso.
+- **"Já completou", não "completa hoje":** um dia sem cron ou uma data lançada
+  com atraso ainda gera o aviso, até o dia do vencimento.
+- Empreendimento "Aprovado" **sem data** não é avisado — o card mostra
+  "Sem data de aprovação" para cobrar o preenchimento.
 
 ### Cobertura de e-mail
 

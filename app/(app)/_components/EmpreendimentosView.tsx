@@ -92,6 +92,12 @@ function EmpreendimentoCard({ emp }: { emp: EmpreendimentoComProgresso }) {
               <span className="badge__dot" />
               {ROTULO_FASE[emp.fase!]}
             </span>
+            {emp.fase === "aprovado" && !emp.dataAprovacao && (
+              <span className="badge badge--vermelho">
+                <span className="badge__dot" />
+                Sem data de aprovação
+              </span>
+            )}
           </>
         )}
       </div>

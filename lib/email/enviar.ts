@@ -14,9 +14,11 @@ export type ResultadoEnvio =
 
 export type PedidoEnvio = {
   tipo: TipoEmail;
-  itemId: string;
+  /** Nulo nos avisos de empreendimento (aprovação), que não são de um item. */
+  itemId: string | null;
   /** O que torna o envio único dentro do tipo (data do prazo, id da revisão). */
   referencia: string;
+  /** Um endereço, ou vários separados por vírgula. */
   destinatario: string | null | undefined;
   mensagem: Mensagem;
   contexto: {

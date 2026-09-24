@@ -121,6 +121,7 @@ export const ROTULO_CAMPO_HISTORICO: Record<string, string> = {
   // Mantido só para o histórico antigo seguir legível: o campo 'responsavel'
   // do empreendimento não existe mais.
   responsavel: "responsável",
+  data_aprovacao: "data de aprovação",
   revisao_atual: "revisão atual",
   data_revisao: "data da revisão",
   enviado_autodoc: "enviado para o Autodoc",

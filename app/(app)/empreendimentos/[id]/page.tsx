@@ -10,7 +10,8 @@ import type { UsuarioBasico } from "@/lib/actions/usuarios";
 import type { Disciplina, Etapa, Projetista } from "@/db/schema";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { AuthError, getCurrentUserWithRole } from "@/lib/auth/session";
-import { hojeISORecife } from "@/lib/ui/status";
+import { faseTemAprovacao, vencimentoAprovacao } from "@/lib/ui/aprovacao";
+import { formatBR, hojeISORecife } from "@/lib/ui/status";
 import { ItensBoard } from "../../_components/ItensBoard";
 import { ExcluirEmpreendimentoButton } from "../../_components/ExcluirEmpreendimentoButton";
 import { EditarEmpreendimentoButton } from "../../_components/EditarEmpreendimentoButton";
@@ -92,6 +93,7 @@ export default async function EmpreendimentoDetalhePage({
                   nome={emp.nome}
                   tipo={emp.tipo}
                   fase={emp.fase}
+                  dataAprovacao={emp.dataAprovacao}
                 />
                 <ExcluirEmpreendimentoButton id={emp.id} nome={emp.nome} />
               </>
@@ -105,6 +107,12 @@ export default async function EmpreendimentoDetalhePage({
               <Campo rotulo="Itens" valor={String(emp.totalItens)} mono />
               <Campo rotulo="Tipo" valor={emp.tipo ? ROTULO_TIPO[emp.tipo] : "—"} />
               <Campo rotulo="Fase" valor={emp.fase ? ROTULO_FASE[emp.fase] : "—"} />
+              {faseTemAprovacao(emp.fase) && (
+                <Campo rotulo="Data de aprovação" valor={formatBR(emp.dataAprovacao)} mono />
+              )}
+              {emp.fase === "aprovado" && emp.dataAprovacao && (
+                <Campo rotulo="Aprovação vence" valor={formatBR(vencimentoAprovacao(emp.dataAprovacao))} mono />
+              )}
             </div>
             {emp.precisaCategorizar && (
               <span className="badge badge--vermelho" style={{ marginTop: "8px" }}>
