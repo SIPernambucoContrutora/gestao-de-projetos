@@ -1,11 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import type { EmpreendimentoComProgresso } from "@/lib/actions/empreendimentos";
 import { FASES_EMPREENDIMENTO, ROTULO_FASE, ROTULO_TIPO } from "./empreendimentoLabels";
 
 type FaseOuCategorizar = EmpreendimentoComProgresso["fase"] | "categorizar";
+
+// Progressão visual da carteira: do estudo (neutro) até pronto (verde).
+const COR_FASE: Record<string, string> = {
+  em_estudo: "#a8c8cc",
+  aprovado: "#1a5fb5",
+  pre_lancamento: "#c4327c",
+  em_execucao: "#b57312",
+  executado: "#1a7a4f",
+};
 
 export function EmpreendimentosView({ emps }: { emps: EmpreendimentoComProgresso[] }) {
   const [faseAtiva, setFaseAtiva] = useState<FaseOuCategorizar | null>(null);
@@ -30,6 +39,11 @@ export function EmpreendimentosView({ emps }: { emps: EmpreendimentoComProgresso
             key={q.valor}
             type="button"
             className={`fase-card${q.valor === "categorizar" ? " fase-card--categorizar" : ""}`}
+            style={
+              q.valor && q.valor !== "categorizar" && COR_FASE[q.valor]
+                ? ({ "--fase-cor": COR_FASE[q.valor] } as CSSProperties)
+                : undefined
+            }
             onClick={() => setFaseAtiva(q.valor)}
             disabled={q.qtd === 0}
           >
